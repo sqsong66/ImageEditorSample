@@ -1,4 +1,4 @@
-package com.example.customviewsample.view
+package com.example.customviewsample.view.layer
 
 import android.content.Context
 import android.graphics.Canvas
@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import com.example.customviewsample.R
 import com.example.customviewsample.utils.dp2Px
+import com.example.customviewsample.view.AlphaGridDrawHelper
 
 class ImageEditorView @JvmOverloads constructor(
     context: Context,
