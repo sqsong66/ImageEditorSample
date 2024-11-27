@@ -2,6 +2,7 @@ package com.example.customviewsample.base
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.Insets
@@ -25,6 +26,7 @@ abstract class BaseActivity<V : ViewBinding>(open val block: (LayoutInflater) ->
         applyWindowInsets()
         initActivity(savedInstanceState)
         initListeners()
+        handleBackPress()
     }
 
     private fun applyWindowInsets() {
@@ -37,6 +39,18 @@ abstract class BaseActivity<V : ViewBinding>(open val block: (LayoutInflater) ->
 
     protected open fun onWindowInsetsApplied(insets: Insets) {
         binding.root.updatePadding(left = insets.left, top = insets.top, right = insets.right, bottom = insets.bottom)
+    }
+
+    private fun handleBackPress() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                onHandleBackPress()
+            }
+        })
+    }
+
+    protected open fun onHandleBackPress() {
+        supportFinishAfterTransition()
     }
 
 }

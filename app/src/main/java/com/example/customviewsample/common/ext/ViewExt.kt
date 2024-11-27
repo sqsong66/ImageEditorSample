@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.os.Build
+import android.view.LayoutInflater
 import android.view.View
 import android.view.Window
 import android.view.inputmethod.InputMethodManager
@@ -158,3 +159,5 @@ fun View.setRippleForeground(
 fun TextView.setTopDrawable(drawableRes: Int) {
     setCompoundDrawablesWithIntrinsicBounds(0, drawableRes, 0, 0)
 }
+
+fun View.layoutInflater(): LayoutInflater = LayoutInflater.from(context)

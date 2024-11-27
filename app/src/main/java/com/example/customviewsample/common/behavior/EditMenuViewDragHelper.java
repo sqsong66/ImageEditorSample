@@ -86,7 +86,7 @@ public class EditMenuViewDragHelper {
 
     private static final int EDGE_SIZE = 20; // dp
 
-    private static final int BASE_SETTLE_DURATION = 386; // ms
+    private static final int BASE_SETTLE_DURATION = 486; // ms
     private static final int MAX_SETTLE_DURATION = 600; // ms
 
     // Current drag state; idle, dragging or settling
