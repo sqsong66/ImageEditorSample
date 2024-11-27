@@ -137,8 +137,8 @@ class ImageEditorView @JvmOverloads constructor(
         imageLayerView.translationX = tx
         imageLayerView.translationY = ty
 
-        val cx = clipRect.centerX() + tx
-        val cy = clipRect.centerY() + ty
+        val cx = clipRect.centerX() + imageLayerView.translationX
+        val cy = clipRect.centerY() + imageLayerView.translationY
         val left = (cx - imageWidth / 2f).toInt()
         val top = (cy - imageHeight / 2f).toInt()
         val right = (cx + imageWidth / 2f).toInt()
