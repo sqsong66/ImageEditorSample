@@ -1,5 +1,6 @@
 package com.example.customviewsample.ui.editor.menus
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -25,6 +26,7 @@ abstract class BaseMenuLayout<V : ViewBinding>(
 
     private val bottomSheetCallback = object : EditMenuBottomSheetBehavior.EditMenuBottomSheetCallback() {
         override fun onStateChanged(bottomSheet: View, newState: Int) {
+            Log.w("BaseMenuLayout", "onStateChanged: $newState")
             if (newState != EditMenuBottomSheetBehavior.STATE_SETTLING) {
                 currentMenuState = newState
                 onMenuSlideDone(bottomSheet, newState != EditMenuBottomSheetBehavior.STATE_HIDDEN)
@@ -36,6 +38,7 @@ abstract class BaseMenuLayout<V : ViewBinding>(
         }
 
         override fun onSlide(bottomSheet: View, slideOffset: Float) {
+            Log.d("BaseMenuLayout", "onSlide: $slideOffset")
             val expandHeight = (bottomSheet.height * abs(slideOffset + 1)).toInt()
             onMenuSlide(bottomSheet, expandHeight, currentMenuState == EditMenuBottomSheetBehavior.STATE_HIDDEN)
         }

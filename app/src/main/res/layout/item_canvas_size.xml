@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="80dp"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="4dp"
+    android:gravity="center_horizontal|bottom"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:id="@+id/sizeFrame"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/shape_canvas_size_checked"
+        app:layout_constraintBottom_toTopOf="@id/sizeNameTv"
+        tools:layout_height="80dp"
+        tools:layout_width="80dp">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/logoIv"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            app:srcCompat="@drawable/ic_size_instagram" />
+
+    </FrameLayout>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/sizeNameTv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:gravity="center_horizontal"
+        android:maxLines="2"
+        android:minLines="2"
+        android:textAppearance="?attr/textAppearanceLabelMedium"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:text="Instagram" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

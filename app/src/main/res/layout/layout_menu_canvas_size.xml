@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="280dp"
+    android:background="@drawable/rounded_top_corners_background"
+    android:elevation="8dp"
+    app:behavior_peekHeight="280dp"
+    app:layout_behavior="@string/menu_bottom_sheet_behavior"
+    app:paddingTopSystemWindowInsets="false"
+    tools:ignore="HardcodedText">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/doneIv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="6dp"
+            android:alpha="0.6"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:tint="?attr/colorOnSurface"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/round_check_circle_24" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/resizeCanvasTv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="RESIZE CANVAS"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@id/doneIv"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/doneIv" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/dimensionTv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="1280x1280"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            app:layout_constraintBottom_toBottomOf="@id/doneIv"
+            app:layout_constraintStart_toEndOf="@id/resizeCanvasTv"
+            app:layout_constraintTop_toTopOf="@id/doneIv" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/canvasSizeRecycler"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:visibility="visible"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/resizeCanvasTv"
+            tools:listitem="@layout/item_canvas_size" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>

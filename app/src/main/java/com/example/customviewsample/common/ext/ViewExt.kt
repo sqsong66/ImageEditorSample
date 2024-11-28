@@ -66,6 +66,51 @@ fun View.setMaterialShapeBackgroundDrawable(
     background = materialShapeDrawable
 }
 
+fun createRippleDrawable(
+    context: Context,
+    backgroundColorResId: Int? = null, // 背景颜色资源 ID（可选）
+    backgroundColorAlpha: Int = 0, // 背景颜色透明度
+    allCornerRadius: Float = 0f, // 四个角的圆角半径
+    topLeftCornerRadius: Float = 0f, // 左上角圆角
+    topRightCornerRadius: Float = 0f, // 右上角圆角
+    bottomLeftCornerRadius: Float = 0f, // 左下角圆角
+    bottomRightCornerRadius: Float = 0f, // 右下角圆角
+    borderWidth: Int = 0, // 边框宽度（可选）
+    borderColorResId: Int? = null, // 边框颜色资源 ID（可选）
+    borderColorAlpha: Int = 255, // 边框颜色透明度
+): RippleDrawable {
+    val rippleColor = getThemeColor(context, com.google.android.material.R.attr.colorControlHighlight)
+    val radii = if (allCornerRadius > 0) {
+        floatArrayOf(allCornerRadius, allCornerRadius, allCornerRadius, allCornerRadius, allCornerRadius, allCornerRadius, allCornerRadius, allCornerRadius)
+    } else {
+        floatArrayOf(topLeftCornerRadius, topLeftCornerRadius, topRightCornerRadius, topRightCornerRadius, bottomRightCornerRadius, bottomRightCornerRadius, bottomLeftCornerRadius, bottomLeftCornerRadius)
+    }
+
+    // Mask drawable: Defines the ripple bounds
+    val maskDrawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadii = radii
+        setColor(Color.BLACK) // 必须设置 Mask 的颜色，但具体颜色不会显示
+    }
+
+    // Content drawable: The visible background with optional border
+    val contentDrawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadii = radii
+        backgroundColorResId?.let {
+            setColor(getThemeColorWithAlpha(context, backgroundColorResId, backgroundColorAlpha))
+        }
+        if (borderWidth > 0 && borderColorResId != null) {
+            setStroke(borderWidth, getThemeColorWithAlpha(context, borderColorResId, borderColorAlpha))
+        }
+    }
+    // Create RippleDrawable
+    return RippleDrawable(
+        ColorStateList.valueOf(rippleColor),
+        contentDrawable, // Set as the content drawable
+        maskDrawable // Set as the mask drawable
+    )
+}
 
 fun View.setRippleBackgroundColor(
     allCornerRadius: Float = 0f,
@@ -74,7 +119,10 @@ fun View.setRippleBackgroundColor(
     bottomLeftCornerRadius: Float = 0f,
     bottomRightCornerRadius: Float = 0f,
     backgroundColorResId: Int = Int.MIN_VALUE,
-    alpha: Int = 255
+    alpha: Int = 255,
+    borderWidth: Int = 0, // 边框宽度
+    borderColorResId: Int = Int.MIN_VALUE, // 边框颜色资源 ID
+    borderAlpha: Int = 255, // 边框透明度
 ) {
     val rippleColor = getThemeColor(context, com.google.android.material.R.attr.colorControlHighlight)
     val radii = if (allCornerRadius != 0f) {
@@ -82,11 +130,13 @@ fun View.setRippleBackgroundColor(
     } else {
         floatArrayOf(topLeftCornerRadius, topLeftCornerRadius, topRightCornerRadius, topRightCornerRadius, bottomRightCornerRadius, bottomRightCornerRadius, bottomLeftCornerRadius, bottomLeftCornerRadius)
     }
+
     val maskDrawable = GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
         cornerRadii = radii
         setColor(Color.BLACK)
     }
+
     val contentDrawable = if (backgroundColorResId == Int.MIN_VALUE) {
         null
     } else {
@@ -94,8 +144,12 @@ fun View.setRippleBackgroundColor(
             shape = GradientDrawable.RECTANGLE
             cornerRadii = radii
             setColor(getThemeColorWithAlpha(context, backgroundColorResId, alpha))
+            if (borderWidth > 0 && borderColorResId != Int.MIN_VALUE) {
+                setStroke(borderWidth, getThemeColorWithAlpha(context, borderColorResId, borderAlpha))
+            }
         }
     }
+
     val rippleDrawable = RippleDrawable(ColorStateList.valueOf(rippleColor), contentDrawable, maskDrawable)
     background = rippleDrawable
 }

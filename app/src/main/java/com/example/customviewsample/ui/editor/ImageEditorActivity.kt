@@ -18,7 +18,7 @@ import com.example.customviewsample.common.behavior.EditMenuBottomSheetBehavior
 import com.example.customviewsample.common.ext.setMaterialShapeBackgroundDrawable
 import com.example.customviewsample.databinding.ActivityImageEditorBinding
 import com.example.customviewsample.ui.editor.adapter.EditorMainMenuAdapter
-import com.example.customviewsample.ui.editor.menus.BackgroundMenuLayout
+import com.example.customviewsample.ui.editor.menus.CanvasSizeMenuLayout
 import com.example.customviewsample.utils.decodeBitmapByGlide
 import com.example.customviewsample.utils.dp2Px
 import com.google.android.material.shape.CornerFamily
@@ -34,7 +34,7 @@ import kotlin.math.min
 class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityImageEditorBinding::inflate) {
 
     private var bottomInsets = 0
-    private var backgroundMenuLayout: BackgroundMenuLayout? = null
+    private var backgroundMenuLayout: CanvasSizeMenuLayout? = null
 
     private val pickMedia = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         uri?.let(::loadImageBitmap)
@@ -65,8 +65,11 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     }
 
     private fun showBackgroundMenu() {
-        backgroundMenuLayout = BackgroundMenuLayout(
-            binding.main,
+        backgroundMenuLayout = CanvasSizeMenuLayout(
+            binding.main, bottomInsets,
+            onCanvasSizeChanged = {
+                binding.imageEditorView.updateCanvasSize(it)
+            },
             onMenuSlide = ::onBottomSheetMenuSlide,
             onMenuSlideDone = ::onBottomSheetMenuSlideDone,
             removeCallback = {
@@ -79,6 +82,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     }
 
     private fun onBottomSheetMenuSlide(bottomSheet: View, expandHeight: Int, isExpand: Boolean) {
+        // Log.w("sqsong", "onBottomSheetMenuSlide: $expandHeight, isExpand: $isExpand")
         if (isExpand) {
             val margin = max(dp2Px<Int>(156), expandHeight + dp2Px<Int>(16))
             (binding.imageEditorView.layoutParams as MarginLayoutParams).apply {
@@ -94,6 +98,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     }
 
     private fun onBottomSheetMenuSlideDone(bottomSheet: View, isExpand: Boolean) {
+        // Log.w("sqsong", "onBottomSheetMenuSlideDone: isExpand: $isExpand")
         if (!isExpand) animateEditorViewMargin()
     }
 
@@ -133,7 +138,9 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     }
 
     override fun onWindowInsetsApplied(insets: Insets) {
-        binding.root.updatePadding(left = insets.left, top = insets.top, right = insets.right, bottom = 0)
+        Log.d("sqsong", "onWindowInsetsApplied: $insets, bottomInsets: $bottomInsets")
+        // 不可以设置binding.root(CoordinatorLayout).updatePadding top, 否则Behavior布局中刷新Layout时会导致Behavior异常收缩
+        binding.contentLayout.updatePadding(top = insets.top)
         binding.mainMenuLayout.updatePadding(bottom = insets.bottom)
         bottomInsets = insets.bottom
     }
