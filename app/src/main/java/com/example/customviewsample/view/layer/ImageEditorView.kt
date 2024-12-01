@@ -8,12 +8,14 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
+import android.util.Size
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.LinearInterpolator
 import androidx.core.content.ContextCompat
 import com.example.customviewsample.R
 import com.example.customviewsample.common.ext.isSameRect
@@ -40,9 +42,15 @@ class ImageEditorView @JvmOverloads constructor(
     private val clipPath = Path()
     private val clipRect = RectF()
     private val preClipRect = RectF()
+    private val stageClipRect = RectF()
+    private val centerPoints = mutableListOf<PointF>()
+
+    // 尺寸变换时临时存储矩形框
+    private val resizeRect = RectF()
     private var currentLayerView: View? = null
     private var resizeAnimator: ValueAnimator? = null
     private val layoutInfos = mutableListOf<LayoutInfo>()
+    private val resizeList = mutableListOf<Size>()
     private var canvasSize: CanvasSize = CanvasSize(width = 2016, height = 1512, iconRes = R.drawable.ic_picture_landscape, title = "Landscape")
 
     private val testPaint by lazy {
@@ -87,6 +95,10 @@ class ImageEditorView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         clipRect.set(calculateClipRect(w, h))
+        if (resizeRect.isEmpty) {
+            resizeRect.set(clipRect)
+            Log.e("sqsong", "onSizeChanged: resizeRect: $resizeRect")
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -106,6 +118,7 @@ class ImageEditorView @JvmOverloads constructor(
             val child = getChildAt(i)
             val layoutInfo = layoutInfos.getOrNull(i) ?: continue
             if (sizeChanged) {
+                Log.d("sqsong", "onLayout: sizeChanged.")
                 // 尺寸发生变化，根据比例重新计算位置和尺寸
                 val newWidth = layoutInfo.widthRatio * clipRect.width()
                 val newHeight = layoutInfo.heightRatio * clipRect.height()
@@ -120,6 +133,7 @@ class ImageEditorView @JvmOverloads constructor(
                 child.translationX = 0f
                 child.translationY = 0f
             } else {
+                Log.w("sqsong", "onLayout: update LayoutInfo.")
                 // 尺寸未变化，更新 LayoutInfo
                 updateChildLayoutInfo(layoutInfo, child)
             }
@@ -170,6 +184,10 @@ class ImageEditorView @JvmOverloads constructor(
             updateChildLayoutInfo(this, imageLayerView)
             layoutInfos.add(this)
         }
+        centerPoints.add(PointF(cx, cy))
+        resizeList.add(Size(imageWidth.toInt(), imageHeight.toInt()))
+        resizeRect.set(clipRect)
+        stageClipRect.set(clipRect)
     }
 
     private fun calculateClipRect(width: Int, height: Int): RectF {
@@ -190,12 +208,59 @@ class ImageEditorView @JvmOverloads constructor(
     fun updateCanvasSize(canvasSize: CanvasSize) {
         this.canvasSize = canvasSize
         resizeAnimator?.cancel()
+        val currentRect = RectF(clipRect)
+        val destRect = calculateClipRect(width, height)
+        clipRect.set(destRect)
+
+        // 最终要缩放的比例
+        val destScale = getNewScale(clipRect)
+
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            val layoutInfo = layoutInfos.getOrNull(i) ?: continue
+            val size = resizeList.getOrNull(i) ?: continue
+            val centerPoint = centerPoints.getOrNull(i) ?: continue
+            val newWidth = size.width * destScale
+            val newHeight = size.height * destScale
+            layoutInfo.widthRatio = newWidth / clipRect.width()
+            layoutInfo.heightRatio = newHeight / clipRect.height()
+
+            // 计算平移量
+            val cx = centerPoint.x + child.translationX
+            val cy = centerPoint.y  + child.translationY
+            val dx = cx - clipRect.centerX()
+            val dy = cy - clipRect.centerY()
+            val tx = dx * destScale - dx
+            val ty = dy * destScale - dy
+            val newCx = cx + tx + (clipRect.centerX() - stageClipRect.centerX())
+            val newCy = cy + ty + (clipRect.centerY() - stageClipRect.centerY())
+            layoutInfo.centerXRatio = (newCx - clipRect.left) / clipRect.width()
+            layoutInfo.centerYRatio = (newCy - clipRect.top) / clipRect.height()
+
+            Log.d("sqsong", "updateCanvasSize: layoutInfo: $layoutInfo")
+        }
+
+        requestLayout()
+    }
+
+    /*fun updateCanvasSize(canvasSize: CanvasSize) {
+        this.canvasSize = canvasSize
+        resizeAnimator?.cancel()
         val curRect = RectF(clipRect)
         val newRect = calculateClipRect(width, height)
         val diffLeft = newRect.left - curRect.left
         val diffTop = newRect.top - curRect.top
         val diffRight = newRect.right - curRect.right
         val diffBottom = newRect.bottom - curRect.bottom
+
+        // 最终要缩放的比例
+        val destScale = getNewScale(newRect)
+
+        val childrenSize = mutableListOf<Size>()
+        repeat(childCount) {
+            childrenSize.add(Size(getChildAt(it).width, getChildAt(it).height))
+        }
+
         resizeAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 300
             interpolator = LinearInterpolator()
@@ -206,7 +271,6 @@ class ImageEditorView @JvmOverloads constructor(
                     curRect.right + factor * diffRight, curRect.bottom + factor * diffBottom
                 )
 
-                // TODO 重新计算子控件的LayoutInfo
                 // 重新计算子控件的 LayoutInfo
                 for (i in 0 until childCount) {
                     val child = getChildAt(i)
@@ -227,11 +291,58 @@ class ImageEditorView @JvmOverloads constructor(
             }
             start()
         }
+    }*/
+
+    private fun getNewScale(newRect: RectF): Float {
+        return when {
+            resizeRect.width() > resizeRect.height() -> {
+                when {
+                    newRect.width() > newRect.height() -> {
+                        if (newRect.height() < resizeRect.height()) {
+                            newRect.height() / resizeRect.height()
+                        } else 1.0f
+                    }
+
+                    else -> {
+                        newRect.width() / resizeRect.width()
+                    }
+                }
+            }
+
+            resizeRect.width() < resizeRect.height() -> {
+                when {
+                    newRect.width() < newRect.height() -> {
+                        if (newRect.width() < resizeRect.width()) {
+                            newRect.width() / resizeRect.width()
+                        } else 1.0f
+                    }
+
+                    else -> {
+                        newRect.height() / resizeRect.height()
+                    }
+                }
+            }
+
+            else -> {
+                when {
+                    newRect.width() < newRect.height() -> {
+                        newRect.width() / resizeRect.width()
+                    }
+
+                    newRect.width() > newRect.height() -> {
+                        newRect.height() / resizeRect.height()
+                    }
+
+                    else -> 1.0f
+                }
+            }
+        }
     }
 
     fun clearLayers() {
         removeAllViews()
         layoutInfos.clear()
+        centerPoints.clear()
     }
 
 
@@ -268,7 +379,16 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     private fun onUp(event: MotionEvent) {
-
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            val layoutInfo = layoutInfos.getOrNull(i) ?: continue
+            updateChildLayoutInfo(layoutInfo, child)
+            // 更新中心点
+            val cx = (child.left + child.right) / 2f + child.translationX
+            val cy = (child.top + child.bottom) / 2f + child.translationY
+            centerPoints[i].set(cx, cy)
+        }
+        stageClipRect.set(clipRect)
     }
 
 
