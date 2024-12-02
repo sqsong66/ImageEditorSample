@@ -11,24 +11,25 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.util.Log
-import android.util.Size
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
+import android.view.ScaleGestureDetector.SimpleOnScaleGestureListener
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
+import androidx.core.animation.doOnStart
 import androidx.core.content.ContextCompat
+import androidx.core.view.children
 import com.example.customviewsample.R
 import com.example.customviewsample.common.ext.isSameRect
+import com.example.customviewsample.common.helper.VibratorHelper
 import com.example.customviewsample.data.CanvasSize
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.view.AlphaGridDrawHelper
+import kotlin.math.sqrt
 
-data class LayoutInfo(
-    var widthRatio: Float = 1f,
-    var heightRatio: Float = 1f,
-    var centerXRatio: Float = 0.5f,
-    var centerYRatio: Float = 0.5f
-)
+private const val MIN_MOVE_DISTANCE = 10f
+private const val MAX_CLICK_DURATION = 400L
 
 class ImageEditorView @JvmOverloads constructor(
     context: Context,
@@ -42,15 +43,14 @@ class ImageEditorView @JvmOverloads constructor(
     private val clipPath = Path()
     private val clipRect = RectF()
     private val preClipRect = RectF()
-    private val stageClipRect = RectF()
-    private val centerPoints = mutableListOf<PointF>()
+    private var touchDownMillis = 0L
+    private val touchDownPoint = PointF()
 
     // 尺寸变换时临时存储矩形框
     private val resizeRect = RectF()
-    private var currentLayerView: View? = null
+    private var currentLayerView: AbsLayer? = null
     private var resizeAnimator: ValueAnimator? = null
-    private val layoutInfos = mutableListOf<LayoutInfo>()
-    private val resizeList = mutableListOf<Size>()
+    private val vibratorHelper by lazy { VibratorHelper(context) }
     private var canvasSize: CanvasSize = CanvasSize(width = 2016, height = 1512, iconRes = R.drawable.ic_picture_landscape, title = "Landscape")
 
     private val testPaint by lazy {
@@ -67,6 +67,14 @@ class ImageEditorView @JvmOverloads constructor(
             darkColor = ContextCompat.getColor(context, R.color.grid_dark)
         )
     }
+
+    private val scaleGestureListener = ScaleGestureDetector(context, object : SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            currentLayerView?.onScale(detector.scaleFactor, detector.focusX, detector.focusY)
+            return true
+        }
+    })
+
 
     init {
         handleAttributes(context, attrs)
@@ -88,13 +96,15 @@ class ImageEditorView @JvmOverloads constructor(
         canvas.clipPath(clipPath)
         alphaGridDrawHelper.drawAlphaGrid(canvas, clipRect)
         super.dispatchDraw(canvas)
-        canvas.drawCircle(clipRect.centerX(), clipRect.centerY(), 10f, testPaint)
         canvas.restore()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         clipRect.set(calculateClipRect(w, h))
+        children.forEach { child ->
+            (child as AbsLayer).stagingResizeInfo(clipRect, updateLayoutInfo = false)
+        }
         if (resizeRect.isEmpty) {
             resizeRect.set(clipRect)
         }
@@ -105,89 +115,29 @@ class ImageEditorView @JvmOverloads constructor(
         val height = MeasureSpec.getSize(heightMeasureSpec)
         setMeasuredDimension(width, height)
         // 测量所有子控件
-        for (i in 0 until childCount) {
-            val child = getChildAt(i)
-            measureChild(child, widthMeasureSpec, heightMeasureSpec)
-        }
+        children.forEach { child -> measureChild(child, widthMeasureSpec, heightMeasureSpec) }
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         val sizeChanged = clipRect.isSameRect(preClipRect)
-        for (i in 0 until childCount) {
-            val child = getChildAt(i)
-            val layoutInfo = layoutInfos.getOrNull(i) ?: continue
-            if (sizeChanged) {
-                // 尺寸发生变化，根据比例重新计算位置和尺寸
-                val newWidth = layoutInfo.widthRatio * clipRect.width()
-                val newHeight = layoutInfo.heightRatio * clipRect.height()
-//                Log.w("sqsong", "onLayout newWidth: $newWidth, newHeight: $newHeight")
-                val newCx = clipRect.left + layoutInfo.centerXRatio * clipRect.width()
-                val newCy = clipRect.top + layoutInfo.centerYRatio * clipRect.height()
-                val left = (newCx - newWidth / 2f).toInt()
-                val top = (newCy - newHeight / 2f).toInt()
-                val right = (newCx + newWidth / 2f).toInt()
-                val bottom = (newCy + newHeight / 2f).toInt()
-                child.layout(left, top, right, bottom)
-//                Log.d("sqsong", "onLayout: left: $left, top: $top, right: $right, bottom: $bottom, clipRect: ${clipRect}, centerX: ${clipRect.centerX()}, centerY: ${clipRect.centerY()}")
-                // 重置位移
-                child.translationX = 0f
-                child.translationY = 0f
-            } else {
-                // 尺寸未变化，更新 LayoutInfo
-                updateChildLayoutInfo(layoutInfo, child)
+        children.forEach { child ->
+            val layer = child as AbsLayer
+            if (sizeChanged) { // 画布区域如果发生变化则需要根据布局信息重新计算子View的位置
+                layer.onUpdateLayout(clipRect)
+            } else { // 画布区域未发生变化则根据控件的布局更新布局信息
+                layer.updateLayoutInfo(clipRect)
             }
         }
         preClipRect.set(clipRect)
     }
 
-    private fun updateChildLayoutInfo(layoutInfo: LayoutInfo, child: View) {
-        val cx = (child.left + child.right) / 2f + child.translationX
-        val cy = (child.top + child.bottom) / 2f + child.translationY
-        layoutInfo.centerXRatio = (cx - clipRect.left) / clipRect.width()
-        layoutInfo.centerYRatio = (cy - clipRect.top) / clipRect.height()
-        layoutInfo.widthRatio = (child.right - child.left) / clipRect.width()
-        layoutInfo.heightRatio = (child.bottom - child.top) / clipRect.height()
-    }
-
     fun addImageLayer(bitmap: Bitmap) {
-        val imageLayerView = ImageLayerView(context, cornerRadius = cornerRadius / 2f)
-        imageLayerView.setImageBitmap(bitmap)
-
-        val scaleFactor = 0.8f
-        // 计算初始宽高，确保图片按比例缩放并居中
-        var imageWidth = clipRect.width() * scaleFactor
-        var imageHeight = imageWidth * bitmap.height / bitmap.width
-        if (imageHeight > clipRect.height() * scaleFactor) {
-            imageHeight = clipRect.height() * scaleFactor
-            imageWidth = imageHeight * bitmap.width / bitmap.height
+        ImageLayerView(context, cornerRadius = cornerRadius / 2f, isSelectedLayer = true).apply {
+            onInitialLayout(this@ImageEditorView, bitmap, clipRect)
+            currentLayerView?.isSelectedLayer = false
+            currentLayerView?.invalidateView()
+            currentLayerView = this
         }
-        val layoutParams = LayoutParams(imageWidth.toInt(), imageHeight.toInt())
-        addView(imageLayerView, layoutParams)
-        // Log.d("sqsong", "addImageLayer: imageWidth: $imageWidth, imageHeight: $imageHeight")
-
-        // 初始化让其摆放在右下角
-        val tx = (clipRect.width() - imageWidth) / 2
-        val ty = (clipRect.height() - imageHeight) / 2
-        imageLayerView.translationX = tx
-        imageLayerView.translationY = ty
-
-        val cx = clipRect.centerX() // + tx
-        val cy = clipRect.centerY() // + ty
-        val left = (cx - imageWidth / 2f).toInt()
-        val top = (cy - imageHeight / 2f).toInt()
-        val right = (cx + imageWidth / 2f).toInt()
-        val bottom = (cy + imageHeight / 2f).toInt()
-        imageLayerView.layout(left, top, right, bottom)
-        currentLayerView = imageLayerView
-
-        // 计算并保存 LayoutInfo
-        LayoutInfo().apply {
-            updateChildLayoutInfo(this, imageLayerView)
-            layoutInfos.add(this)
-        }
-        centerPoints.add(PointF((left + right) / 2f + tx, (top + bottom) / 2f + ty))
-        resizeList.add(Size(imageWidth.toInt(), imageHeight.toInt()))
-        stageClipRect.set(clipRect)
     }
 
     private fun calculateClipRect(width: Int, height: Int): RectF {
@@ -205,91 +155,35 @@ class ImageEditorView @JvmOverloads constructor(
         return rectF
     }
 
+
     fun updateCanvasSize(canvasSize: CanvasSize) {
         this.canvasSize = canvasSize
         resizeAnimator?.cancel()
         val currentRect = RectF(clipRect)
-        val destRect = calculateClipRect(width, height)
-        clipRect.set(destRect)
-
-        // 最终要缩放的比例
-        val destScale = getNewScale(clipRect)
-
-        for (i in 0 until childCount) {
-            val child = getChildAt(i)
-            val layoutInfo = layoutInfos.getOrNull(i) ?: continue
-            val size = resizeList.getOrNull(i) ?: continue
-            val centerPoint = centerPoints.getOrNull(i) ?: continue
-            val newWidth = size.width * destScale
-            val newHeight = size.height * destScale
-            layoutInfo.widthRatio = newWidth / clipRect.width()
-            layoutInfo.heightRatio = newHeight / clipRect.height()
-
-            // 计算平移量
-            val cx = centerPoint.x
-            val cy = centerPoint.y
-            val dx = cx - clipRect.centerX()
-            val dy = cy - clipRect.centerY()
-            val tx = dx * destScale - dx
-            val ty = dy * destScale - dy
-            val newCx = cx + tx + (clipRect.centerX() - stageClipRect.centerX())
-            val newCy = cy + ty + (clipRect.centerY() - stageClipRect.centerY())
-            layoutInfo.centerXRatio = (newCx - clipRect.left) / clipRect.width()
-            layoutInfo.centerYRatio = (newCy - clipRect.top) / clipRect.height()
-//            Log.d("sqsong", "updateCanvasSize, destScale: $destScale, layoutInfo: $layoutInfo")
-        }
-        requestLayout()
-    }
-
-    /*fun updateCanvasSize(canvasSize: CanvasSize) {
-        this.canvasSize = canvasSize
-        resizeAnimator?.cancel()
-        val curRect = RectF(clipRect)
         val newRect = calculateClipRect(width, height)
-        val diffLeft = newRect.left - curRect.left
-        val diffTop = newRect.top - curRect.top
-        val diffRight = newRect.right - curRect.right
-        val diffBottom = newRect.bottom - curRect.bottom
-
-        // 最终要缩放的比例
-        val destScale = getNewScale(newRect)
-
-        val childrenSize = mutableListOf<Size>()
-        repeat(childCount) {
-            childrenSize.add(Size(getChildAt(it).width, getChildAt(it).height))
-        }
-
+        val diffLeft = newRect.left - currentRect.left
+        val diffTop = newRect.top - currentRect.top
+        val diffRight = newRect.right - currentRect.right
+        val diffBottom = newRect.bottom - currentRect.bottom
         resizeAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 300
-            interpolator = LinearInterpolator()
+            interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener {
                 val factor = it.animatedValue as Float
                 clipRect.set(
-                    curRect.left + factor * diffLeft, curRect.top + factor * diffTop,
-                    curRect.right + factor * diffRight, curRect.bottom + factor * diffBottom
+                    currentRect.left + factor * diffLeft, currentRect.top + factor * diffTop,
+                    currentRect.right + factor * diffRight, currentRect.bottom + factor * diffBottom
                 )
-
-                // 重新计算子控件的 LayoutInfo
-                for (i in 0 until childCount) {
-                    val child = getChildAt(i)
-                    val layoutInfo = layoutInfos.getOrNull(i) ?: continue
-
-                    // 计算子控件在父视图坐标系中的中心位置，考虑到 translation
-                    val cx = (child.left + child.right) / 2f + child.translationX
-                    val cy = (child.top + child.bottom) / 2f + child.translationY
-
-                    // 更新 LayoutInfo，相对于新的 clipRect 的比例
-                    layoutInfo.centerXRatio = (cx - clipRect.left) / clipRect.width()
-                    layoutInfo.centerYRatio = (cy - clipRect.top) / clipRect.height()
-                    // 如果需要调整子控件的尺寸比例，可以在此处更新 widthRatio 和 heightRatio
-                    layoutInfo.widthRatio = (child.width) / clipRect.width()
-                    layoutInfo.heightRatio = (child.height) / clipRect.height()
+                children.forEach { child ->
+                    // 根据factor得到当前的scale
+                    val destScale = getNewScale(clipRect)
+                    (child as AbsLayer).transformLayerByResize(clipRect, destScale)
                 }
                 requestLayout()
             }
             start()
         }
-    }*/
+    }
 
     private fun getNewScale(newRect: RectF): Float {
         return when {
@@ -337,22 +231,35 @@ class ImageEditorView @JvmOverloads constructor(
         }
     }
 
+    override fun addView(child: View?, index: Int, params: LayoutParams?) {
+        child?.scaleX
+        if (child !is AbsLayer) {
+            throw IllegalArgumentException("Child $child must implement AbsLayer")
+        }
+        super.addView(child, index, params)
+    }
+
     fun clearLayers() {
         removeAllViews()
-        layoutInfos.clear()
-        centerPoints.clear()
     }
 
 
     /******************** 触摸事件 ********************/
+    // 拦截所有子控件的触摸事件，交由当前父控件来统一处理
     override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
         return true
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // if (!clipRect.contains(event.x, event.y)) return false
+        // scaleGestureListener.onTouchEvent(event)
         when (event.action and MotionEvent.ACTION_MASK) {
-            MotionEvent.ACTION_DOWN -> onDown(event)
+            MotionEvent.ACTION_DOWN -> {
+                if (!clipRect.contains(event.x, event.y)) return false
+                onDown(event)
+            }
+
             MotionEvent.ACTION_MOVE -> onMove(event)
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> onUp(event)
         }
@@ -360,6 +267,8 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     private fun onDown(event: MotionEvent) {
+        touchDownPoint.set(event.x, event.y)
+        touchDownMillis = System.currentTimeMillis()
         lastX = event.x
         lastY = event.y
     }
@@ -368,26 +277,68 @@ class ImageEditorView @JvmOverloads constructor(
         currentLayerView?.let {
             val dx = event.x - lastX
             val dy = event.y - lastY
-            it.translationX += dx
-            it.translationY += dy
+            it.translate(dx, dy)
         }
-
         lastX = event.x
         lastY = event.y
     }
 
     private fun onUp(event: MotionEvent) {
-        for (i in 0 until childCount) {
-            val child = getChildAt(i)
-            val layoutInfo = layoutInfos.getOrNull(i) ?: continue
-            updateChildLayoutInfo(layoutInfo, child)
-            // 更新中心点
-            val cx = (child.left + child.right) / 2f + child.translationX
-            val cy = (child.top + child.bottom) / 2f + child.translationY
-            centerPoints[i].set(cx, cy)
-        }
-        stageClipRect.set(clipRect)
         resizeRect.set(clipRect)
+        children.forEach { child ->
+            (child as AbsLayer).stagingResizeInfo(clipRect)
+        }
+
+        val distance = calculateDistance(touchDownPoint.x, touchDownPoint.y, event.x, event.y)
+        val isMoved = distance > MIN_MOVE_DISTANCE
+        val isClickTime = System.currentTimeMillis() - touchDownMillis < MAX_CLICK_DURATION
+        if (isClickTime && !isMoved) {
+            processClickEvent(event.x, event.y)
+        }
     }
 
+    private fun processClickEvent(x: Float, y: Float) {
+        findTouchedLayer(x, y)?.let { layerView ->
+            if (currentLayerView == layerView) return
+            currentLayerView?.isSelectedLayer = false
+            currentLayerView?.invalidateView()
+
+            currentLayerView = layerView
+            currentLayerView?.isSelectedLayer = true
+            currentLayerView?.invalidateView()
+            ValueAnimator.ofFloat(1f, 0.95f, 1f).apply {
+                duration = 200
+                interpolator = AccelerateDecelerateInterpolator()
+                addUpdateListener {
+                    val scaleFactor = it.animatedValue as Float
+                    val view = (layerView as View)
+                    view.scaleX = scaleFactor
+                    view.scaleY = scaleFactor
+                }
+                addListener(doOnStart { vibratorHelper.vibrate() })
+                start()
+            }
+        } ?: run {
+            currentLayerView?.isSelectedLayer = false
+            currentLayerView?.invalidateView()
+            currentLayerView = null
+        }
+    }
+
+    private fun findTouchedLayer(x: Float, y: Float): AbsLayer? {
+        // 反向遍历children
+        for (i in childCount - 1 downTo 0) {
+            val child = getChildAt(i)
+            if (child is AbsLayer && child.isTouchedInLayer(x, y)) {
+                return child
+            }
+        }
+        return null
+    }
+
+    private fun calculateDistance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
+        val x = x2 - x1
+        val y = y2 - y1
+        return sqrt(x * x + y * y)
+    }
 }

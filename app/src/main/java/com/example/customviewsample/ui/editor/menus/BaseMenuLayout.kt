@@ -26,7 +26,6 @@ abstract class BaseMenuLayout<V : ViewBinding>(
 
     private val bottomSheetCallback = object : EditMenuBottomSheetBehavior.EditMenuBottomSheetCallback() {
         override fun onStateChanged(bottomSheet: View, newState: Int) {
-            Log.w("BaseMenuLayout", "onStateChanged: $newState")
             if (newState != EditMenuBottomSheetBehavior.STATE_SETTLING) {
                 currentMenuState = newState
                 onMenuSlideDone(bottomSheet, newState != EditMenuBottomSheetBehavior.STATE_HIDDEN)
