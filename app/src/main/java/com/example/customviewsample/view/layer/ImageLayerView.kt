@@ -1,13 +1,11 @@
 package com.example.customviewsample.view.layer
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.util.AttributeSet
-import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatImageView
 import com.example.customviewsample.utils.dp2Px
 
@@ -17,9 +15,6 @@ class ImageLayerView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : AppCompatImageView(context, attrs, defStyleAttr) {
-
-    private var lastX = 0f
-    private var lastY = 0f
 
     private val paint by lazy {
         Paint().apply {
@@ -38,23 +33,16 @@ class ImageLayerView @JvmOverloads constructor(
         path.addRoundRect(0f, 0f, w.toFloat(), h.toFloat(), cornerRadius, cornerRadius, Path.Direction.CW)
     }
 
+    override fun layout(l: Int, t: Int, r: Int, b: Int) {
+        super.layout(l, t, r, b)
+    }
+
     override fun onDraw(canvas: Canvas) {
         canvas.save()
         canvas.clipPath(path)
         super.onDraw(canvas)
         canvas.restore()
         canvas.drawPath(path, paint)
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        val dx = event.x - lastX
-        val dy = event.y - lastY
-        translationX += dx
-        translationY += dy
-        lastX = event.x
-        lastY = event.y
-        return true
     }
 
 }

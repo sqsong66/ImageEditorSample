@@ -97,7 +97,6 @@ class ImageEditorView @JvmOverloads constructor(
         clipRect.set(calculateClipRect(w, h))
         if (resizeRect.isEmpty) {
             resizeRect.set(clipRect)
-            Log.e("sqsong", "onSizeChanged: resizeRect: $resizeRect")
         }
     }
 
@@ -118,10 +117,10 @@ class ImageEditorView @JvmOverloads constructor(
             val child = getChildAt(i)
             val layoutInfo = layoutInfos.getOrNull(i) ?: continue
             if (sizeChanged) {
-                Log.d("sqsong", "onLayout: sizeChanged.")
                 // 尺寸发生变化，根据比例重新计算位置和尺寸
                 val newWidth = layoutInfo.widthRatio * clipRect.width()
                 val newHeight = layoutInfo.heightRatio * clipRect.height()
+//                Log.w("sqsong", "onLayout newWidth: $newWidth, newHeight: $newHeight")
                 val newCx = clipRect.left + layoutInfo.centerXRatio * clipRect.width()
                 val newCy = clipRect.top + layoutInfo.centerYRatio * clipRect.height()
                 val left = (newCx - newWidth / 2f).toInt()
@@ -129,11 +128,11 @@ class ImageEditorView @JvmOverloads constructor(
                 val right = (newCx + newWidth / 2f).toInt()
                 val bottom = (newCy + newHeight / 2f).toInt()
                 child.layout(left, top, right, bottom)
+//                Log.d("sqsong", "onLayout: left: $left, top: $top, right: $right, bottom: $bottom, clipRect: ${clipRect}, centerX: ${clipRect.centerX()}, centerY: ${clipRect.centerY()}")
                 // 重置位移
                 child.translationX = 0f
                 child.translationY = 0f
             } else {
-                Log.w("sqsong", "onLayout: update LayoutInfo.")
                 // 尺寸未变化，更新 LayoutInfo
                 updateChildLayoutInfo(layoutInfo, child)
             }
@@ -151,10 +150,10 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     fun addImageLayer(bitmap: Bitmap) {
-        val imageLayerView = ImageLayerView(context, cornerRadius = cornerRadius)
+        val imageLayerView = ImageLayerView(context, cornerRadius = cornerRadius / 2f)
         imageLayerView.setImageBitmap(bitmap)
-        val scaleFactor = 0.8f
 
+        val scaleFactor = 0.8f
         // 计算初始宽高，确保图片按比例缩放并居中
         var imageWidth = clipRect.width() * scaleFactor
         var imageHeight = imageWidth * bitmap.height / bitmap.width
@@ -166,12 +165,14 @@ class ImageEditorView @JvmOverloads constructor(
         addView(imageLayerView, layoutParams)
         // Log.d("sqsong", "addImageLayer: imageWidth: $imageWidth, imageHeight: $imageHeight")
 
-        // 让其摆放在右下角
+        // 初始化让其摆放在右下角
         val tx = (clipRect.width() - imageWidth) / 2
         val ty = (clipRect.height() - imageHeight) / 2
-        val cx = clipRect.centerX() + tx
-        val cy = clipRect.centerY() + ty
-        // imageLayerView.rotation = 30f
+        imageLayerView.translationX = tx
+        imageLayerView.translationY = ty
+
+        val cx = clipRect.centerX() // + tx
+        val cy = clipRect.centerY() // + ty
         val left = (cx - imageWidth / 2f).toInt()
         val top = (cy - imageHeight / 2f).toInt()
         val right = (cx + imageWidth / 2f).toInt()
@@ -184,9 +185,8 @@ class ImageEditorView @JvmOverloads constructor(
             updateChildLayoutInfo(this, imageLayerView)
             layoutInfos.add(this)
         }
-        centerPoints.add(PointF(cx, cy))
+        centerPoints.add(PointF((left + right) / 2f + tx, (top + bottom) / 2f + ty))
         resizeList.add(Size(imageWidth.toInt(), imageHeight.toInt()))
-        resizeRect.set(clipRect)
         stageClipRect.set(clipRect)
     }
 
@@ -226,8 +226,8 @@ class ImageEditorView @JvmOverloads constructor(
             layoutInfo.heightRatio = newHeight / clipRect.height()
 
             // 计算平移量
-            val cx = centerPoint.x + child.translationX
-            val cy = centerPoint.y  + child.translationY
+            val cx = centerPoint.x
+            val cy = centerPoint.y
             val dx = cx - clipRect.centerX()
             val dy = cy - clipRect.centerY()
             val tx = dx * destScale - dx
@@ -236,10 +236,8 @@ class ImageEditorView @JvmOverloads constructor(
             val newCy = cy + ty + (clipRect.centerY() - stageClipRect.centerY())
             layoutInfo.centerXRatio = (newCx - clipRect.left) / clipRect.width()
             layoutInfo.centerYRatio = (newCy - clipRect.top) / clipRect.height()
-
-            Log.d("sqsong", "updateCanvasSize: layoutInfo: $layoutInfo")
+//            Log.d("sqsong", "updateCanvasSize, destScale: $destScale, layoutInfo: $layoutInfo")
         }
-
         requestLayout()
     }
 
@@ -389,7 +387,7 @@ class ImageEditorView @JvmOverloads constructor(
             centerPoints[i].set(cx, cy)
         }
         stageClipRect.set(clipRect)
+        resizeRect.set(clipRect)
     }
-
 
 }
