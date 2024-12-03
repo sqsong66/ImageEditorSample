@@ -11,7 +11,7 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
 import android.util.AttributeSet
-import android.util.Log
+import android.util.Size
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
 import androidx.appcompat.widget.AppCompatImageView
@@ -31,10 +31,15 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     private val path = Path()
+    private var isSaveMode = false
     private val resizeRect = RectF()
+    private val tempMatrix = Matrix()
     private val centerPoint = PointF()
     private val layoutInfo = LayoutInfo()
-    private val tempMatrix by lazy { Matrix() }
+    private var tempCenterPoint = PointF()
+    private var tempSize = Size(0, 0)
+    private var resizeSize = Size(0, 0)
+    private var layerCacheInfo = LayerTempCacheInfo()
 
     private val paint by lazy {
         Paint().apply {
@@ -43,6 +48,13 @@ class ImageLayerView @JvmOverloads constructor(
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
             strokeWidth = dp2Px(2)
+        }
+    }
+
+    private val testPaint by lazy {
+        Paint().apply {
+            color = Color.RED
+            style = Paint.Style.FILL
         }
     }
 
@@ -70,24 +82,40 @@ class ImageLayerView @JvmOverloads constructor(
         val cx = (left + right) / 2f + translationX
         val cy = (top + bottom) / 2f + translationY
         centerPoint.set(cx, cy)
+        resizeSize = Size(right - left, bottom - top)
     }
 
-    override fun transformLayerByResize(clipRect: RectF, destScale: Float) {
-        val newWidth = measuredWidth * destScale
-        val newHeight = measuredHeight * destScale
+    override fun tempStagingSize() {
+        tempSize = Size(right - left, bottom - top)
+        tempCenterPoint.set((left + right) / 2f + translationX, (top + bottom) / 2f + translationY)
+    }
+
+    override fun transformLayerByResize(clipRect: RectF, destScale: Float, factor: Float) {
+        // 计算变换大小
+        val diffWidth = resizeSize.width * destScale - tempSize.width
+        val diffHeight = resizeSize.height * destScale - tempSize.height
+        val newWidth = tempSize.width + diffWidth * factor
+        val newHeight = tempSize.height + diffHeight * factor
         val widthRatio = newWidth / clipRect.width()
         val heightRatio = newHeight / clipRect.height()
         layoutInfo.widthRatio = widthRatio
         layoutInfo.heightRatio = heightRatio
 
+        // 计算变换位置
         val dx = centerPoint.x - clipRect.centerX()
         val dy = centerPoint.y - clipRect.centerY()
         val tx = dx * destScale - dx
         val ty = dy * destScale - dy
-        val cx = centerPoint.x + tx + (clipRect.centerX() - resizeRect.centerX())
-        val cy = centerPoint.y + ty + (clipRect.centerY() - resizeRect.centerY())
-        layoutInfo.centerXRatio = (cx - clipRect.left) / clipRect.width()
-        layoutInfo.centerYRatio = (cy - clipRect.top) / clipRect.height()
+        val deltaTx = tx + (clipRect.centerX() - resizeRect.centerX())
+        val deltaTy = ty + (clipRect.centerY() - resizeRect.centerY())
+        // 终点坐标
+        val cx = centerPoint.x + deltaTx
+        val cy = centerPoint.y + deltaTy
+        // 从起始坐标tempCenterPoint根据factor变换到终点坐标(cx, cy)
+        val tcx = tempCenterPoint.x + (cx - tempCenterPoint.x) * factor
+        val tcy = tempCenterPoint.y + (cy - tempCenterPoint.y) * factor
+        layoutInfo.centerXRatio = (tcx - clipRect.left) / clipRect.width()
+        layoutInfo.centerYRatio = (tcy - clipRect.top) / clipRect.height()
     }
 
     override fun onUpdateLayout(clipRect: RectF) {
@@ -133,14 +161,59 @@ class ImageLayerView @JvmOverloads constructor(
         return (pixel shr 24 and 0xff) != 0
     }
 
-    override fun onScale(scaleFactor: Float, focusX: Float, focusY: Float) {
+    override fun stagingLayerTempCacheInfo(focusX: Float, focusY: Float) {
         val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
+        /*translationX += (pivotX - focusPoint[0]) * (1 - scaleX)
+        translationY += (pivotY - focusPoint[1]) * (1 - scaleY)
+        pivotX = focusPoint[0]
+        pivotY = focusPoint[1]*/
+        val oldPivotX = pivotX
+        val oldPivotY = pivotY
+        // 保存旧的变换矩阵
+        tempMatrix.reset()
+        tempMatrix.postTranslate(translationX, translationY)
+        tempMatrix.postScale(scaleX, scaleY, oldPivotX, oldPivotY)
+        tempMatrix.postRotate(rotation, oldPivotX, oldPivotY)
+        // 使用旧矩阵映射原点
+        val oldOrigin = floatArrayOf(0f, 0f)
+        tempMatrix.mapPoints(oldOrigin)
+        // 更新锚点到新的焦点
         pivotX = focusPoint[0]
         pivotY = focusPoint[1]
-        scaleX *= scaleFactor
-        scaleY *= scaleFactor
+        // 保存新的变换矩阵
+        tempMatrix.reset()
+        tempMatrix.postTranslate(translationX, translationY)
+        tempMatrix.postScale(scaleX, scaleY, pivotX, pivotY)
+        tempMatrix.postRotate(rotation, pivotX, pivotY)
+        // 使用新矩阵映射原点
+        val newOrigin = floatArrayOf(0f, 0f)
+        tempMatrix.mapPoints(newOrigin)
+
+        // 计算差值并调整平移
+        val deltaX = oldOrigin[0] - newOrigin[0]
+        val deltaY = oldOrigin[1] - newOrigin[1]
+        translationX += deltaX
+        translationY += deltaY
+        layerCacheInfo = LayerTempCacheInfo(
+            scaleX = scaleX,
+            scaleY = scaleY,
+            rotation = rotation
+        )
+    }
+
+    override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float) {
+        scaleX = scaleFactor * layerCacheInfo.scaleX
+        scaleY = scaleFactor * layerCacheInfo.scaleY
+        rotation = deltaAngle + layerCacheInfo.rotation
         invalidate()
-        Log.d("sqsong", "onScale: $scaleFactor")
+    }
+
+    override fun resetPivotToCenter() {
+        resetPivotToCenter(this)
+    }
+
+    override fun changeSaveState(isSave: Boolean) {
+        isSaveMode = isSave
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -150,7 +223,7 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        if (isSelectedLayer) {
+        if (isSelectedLayer && !isSaveMode) {
             canvas.save()
             canvas.clipPath(path)
             super.onDraw(canvas)
@@ -177,6 +250,9 @@ class ImageLayerView @JvmOverloads constructor(
         // 设置初始偏移量(实验性，这里将图片放到父控件画布的右下角)
         val tx = (clipRect.width() - imageWidth) / 2
         val ty = (clipRect.height() - imageHeight) / 2
+//        translationX = tx
+//        translationY = ty
+
         val cx = clipRect.centerX() + tx
         val cy = clipRect.centerY() + ty
         val left = (cx - imageWidth / 2f).toInt()
@@ -185,8 +261,6 @@ class ImageLayerView @JvmOverloads constructor(
         val bottom = (cy + imageHeight / 2f).toInt()
         // 计算控件的摆放位置
         layout(left, top, right, bottom)
-        centerPoint.set(cx, cy)
-        resizeRect.set(clipRect)
-        updateChildLayoutInfo(layoutInfo, clipRect, this)
+        stagingResizeInfo(clipRect, true)
     }
 }

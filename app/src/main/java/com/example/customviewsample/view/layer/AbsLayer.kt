@@ -1,36 +1,10 @@
 package com.example.customviewsample.view.layer
 
-import android.graphics.Matrix
 import android.graphics.PointF
 import android.graphics.RectF
-import android.view.View
+import android.widget.ImageView
 
 interface AbsLayer {
-
-    /**
-     * 更新子View的布局信息
-     * @param layoutInfo 布局信息
-     * @param clipRect 画布区域
-     * @param child 子View
-     */
-    fun updateChildLayoutInfo(layoutInfo: LayoutInfo, clipRect: RectF, child: View) {
-        // 中心点坐标需要加上控件的translationX和translationY
-        val cx = (child.left + child.right) / 2f + child.translationX
-        val cy = (child.top + child.bottom) / 2f + child.translationY
-        layoutInfo.centerXRatio = (cx - clipRect.left) / clipRect.width()
-        layoutInfo.centerYRatio = (cy - clipRect.top) / clipRect.height()
-        layoutInfo.widthRatio = (child.right - child.left) / clipRect.width()
-        layoutInfo.heightRatio = (child.bottom - child.top) / clipRect.height()
-    }
-
-    fun mapCoordinateToLocal(view: View, x: Float, y: Float): FloatArray {
-        val localPoint = floatArrayOf(x - view.left, y - view.top)
-        if (view.matrix.isIdentity) return localPoint
-        val invertMatrix = Matrix()
-        view.matrix.invert(invertMatrix)
-        invertMatrix.mapPoints(localPoint)
-        return localPoint
-    }
 
     var isSelectedLayer: Boolean
 
@@ -43,17 +17,68 @@ interface AbsLayer {
 
     fun translate(dx: Float, dy: Float)
 
+    /**
+     * 更新子View的布局信息
+     * @param clipRect 父控件画布区域
+     */
     fun updateLayoutInfo(clipRect: RectF)
 
+    /**
+     * 父控件尺寸发生变化时或触摸过后，保存子控件的尺寸大小以及中心点以及位置信息，方便在进行尺寸切换时进行动画过渡。
+     * @param clipRect 父控件画布区域
+     * @param updateLayoutInfo 是否更新布局信息
+     */
     fun stagingResizeInfo(clipRect: RectF, updateLayoutInfo: Boolean = true)
 
-    fun transformLayerByResize(clipRect: RectF, destScale: Float)
+    /**
+     * 在进行修改画布尺寸前，临时保存子控件的尺寸大小以及中心点位置信息，
+     * 方便在进行尺寸吸怪动画时进行流畅变换过渡。
+     */
+    fun tempStagingSize()
 
+    /**
+     * 父控件切换画布尺寸时，子控件根据画布局域以及目标缩放比例进行变换
+     * @param clipRect 父控件画布区域
+     * @param destScale 目标缩放比例(最终缩放比例)
+     * @param factor 变换因子(0f ~ 1f)
+     */
+    fun transformLayerByResize(clipRect: RectF, destScale: Float, factor: Float)
+
+    /**
+     * 根据布局信息更新子控件的布局位置
+     * @param clipRect 父控件画布区域
+     */
     fun onUpdateLayout(clipRect: RectF)
 
     fun invalidateView()
 
+    /**
+     * 判断触摸点是否在子控件内，如果是图片控件[ImageView]则判断触摸点是否在图片的非透明区域。
+     * @param x 触摸点x轴坐标
+     * @param y 触摸点y轴坐标
+     * @return 是否在子控件内
+     */
     fun isTouchedInLayer(x: Float, y: Float): Boolean
 
-    fun onScale(scaleFactor: Float, focusX: Float, focusY: Float)
+    /**
+     * 子控件在触摸时先缓存当前的缩放、旋转信息，方便在移动时进行缩放、旋转操作。缩放旋转时的初始值会使用当前缓存的数值。
+     * 由于缩放旋转会影响控件的偏移量，所以在缩放旋转时需要重新计算控件缩放、旋转的锚点。详见其实现方法。
+     * @param focusX 双指触摸时中心点x轴坐标
+     * @param focusY 双指触摸时中心点y轴坐标
+     */
+    fun stagingLayerTempCacheInfo(focusX: Float, focusY: Float)
+
+    /**
+     * 子控件在触摸移动时进行缩放、旋转操作。
+     * @param scaleFactor 缩放因子
+     * @param deltaAngle 旋转角度
+     */
+    fun onScaleRotate(scaleFactor: Float, deltaAngle: Float)
+
+    /**
+     * 将子控件的锚点重置到中心点(手势缩放旋转的时候会改变控件的锚点)。
+     */
+    fun resetPivotToCenter()
+
+    fun changeSaveState(isSave: Boolean)
 }

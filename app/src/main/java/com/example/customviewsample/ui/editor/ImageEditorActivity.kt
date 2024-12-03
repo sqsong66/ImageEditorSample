@@ -119,6 +119,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     }
 
     override fun initListeners() {
+        binding.previewIv.setOnClickListener { binding.previewIv.visibility = View.GONE }
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -132,13 +133,21 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
                     true
                 }
 
+                R.id.save_image -> {
+                    val bitmap = binding.imageEditorView.getEditorBitmap()
+                    Log.d("sqsong", "Bitmap size: ${bitmap.width}x${bitmap.height}")
+                    binding.previewIv.setImageBitmap(bitmap)
+                    binding.previewIv.visibility = View.VISIBLE
+                    true
+                }
+
                 else -> false
             }
         }
     }
 
     override fun onWindowInsetsApplied(insets: Insets) {
-        Log.d("sqsong", "onWindowInsetsApplied: $insets, bottomInsets: $bottomInsets")
+        // Log.d("sqsong", "onWindowInsetsApplied: $insets, bottomInsets: $bottomInsets")
         // 不可以设置binding.root(CoordinatorLayout).updatePadding top, 否则Behavior布局中刷新Layout时会导致Behavior异常收缩
         binding.contentLayout.updatePadding(top = insets.top)
         binding.mainMenuLayout.updatePadding(bottom = insets.bottom)

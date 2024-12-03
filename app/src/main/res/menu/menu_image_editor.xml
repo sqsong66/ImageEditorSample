@@ -16,4 +16,11 @@
         app:iconTint="?attr/colorOnSurface"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/save_image"
+        android:icon="@drawable/baseline_image_24"
+        android:title="Save Image"
+        app:iconTint="?attr/colorOnSurface"
+        app:showAsAction="never" />
+
 </menu>

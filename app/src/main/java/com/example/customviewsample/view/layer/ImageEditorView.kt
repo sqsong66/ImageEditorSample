@@ -6,14 +6,14 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
-import android.view.ScaleGestureDetector
-import android.view.ScaleGestureDetector.SimpleOnScaleGestureListener
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -26,7 +26,6 @@ import com.example.customviewsample.common.helper.VibratorHelper
 import com.example.customviewsample.data.CanvasSize
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.view.AlphaGridDrawHelper
-import kotlin.math.sqrt
 
 private const val MIN_MOVE_DISTANCE = 10f
 private const val MAX_CLICK_DURATION = 400L
@@ -42,6 +41,7 @@ class ImageEditorView @JvmOverloads constructor(
     private var cornerRadius = 0f
     private val clipPath = Path()
     private val clipRect = RectF()
+    private var isSaveMode = false
     private val preClipRect = RectF()
     private var touchDownMillis = 0L
     private val touchDownPoint = PointF()
@@ -50,13 +50,27 @@ class ImageEditorView @JvmOverloads constructor(
     private val resizeRect = RectF()
     private var currentLayerView: AbsLayer? = null
     private var resizeAnimator: ValueAnimator? = null
+
+    @GestureMode
+    private var gestureMode: Int = GestureMode.GESTURE_NONE
+
+    // 双指时两指之间的距离
+    private var fingerDistance = 0f
+
+    // 双指时两指之间的中心点
+    private val fingerCenterPoint = PointF()
+
+    // 双指按下时的角度
+    private var fingerDownAngle = 0f
+
     private val vibratorHelper by lazy { VibratorHelper(context) }
-    private var canvasSize: CanvasSize = CanvasSize(width = 2016, height = 1512, iconRes = R.drawable.ic_picture_landscape, title = "Landscape")
+    private var canvasSize = CanvasSize(width = 1512, height = 4016, iconRes = R.drawable.ic_picture_portrait, title = "Portrait", isTint = true)
 
     private val testPaint by lazy {
         Paint().apply {
             color = Color.GREEN
-            style = Paint.Style.FILL
+            style = Paint.Style.STROKE
+            strokeWidth = 5f
         }
     }
 
@@ -67,14 +81,6 @@ class ImageEditorView @JvmOverloads constructor(
             darkColor = ContextCompat.getColor(context, R.color.grid_dark)
         )
     }
-
-    private val scaleGestureListener = ScaleGestureDetector(context, object : SimpleOnScaleGestureListener() {
-        override fun onScale(detector: ScaleGestureDetector): Boolean {
-            currentLayerView?.onScale(detector.scaleFactor, detector.focusX, detector.focusY)
-            return true
-        }
-    })
-
 
     init {
         handleAttributes(context, attrs)
@@ -90,24 +96,24 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     override fun dispatchDraw(canvas: Canvas) {
-        canvas.save()
-        clipPath.reset()
-        clipPath.addRoundRect(clipRect, cornerRadius, cornerRadius, Path.Direction.CW)
-        canvas.clipPath(clipPath)
-        alphaGridDrawHelper.drawAlphaGrid(canvas, clipRect)
-        super.dispatchDraw(canvas)
-        canvas.restore()
+        if (isSaveMode) {
+            super.dispatchDraw(canvas)
+        } else {
+            canvas.save()
+            clipPath.reset()
+            clipPath.addRoundRect(clipRect, cornerRadius, cornerRadius, Path.Direction.CW)
+            canvas.clipPath(clipPath)
+            alphaGridDrawHelper.drawAlphaGrid(canvas, clipRect)
+            super.dispatchDraw(canvas)
+            canvas.restore()
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         clipRect.set(calculateClipRect(w, h))
-        children.forEach { child ->
-            (child as AbsLayer).stagingResizeInfo(clipRect, updateLayoutInfo = false)
-        }
-        if (resizeRect.isEmpty) {
-            resizeRect.set(clipRect)
-        }
+        Log.d("sqsong", "onSizeChanged: clipRect ratio: ${clipRect.width() / clipRect.height()}")
+        stagingChildResizeInfo(false)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -119,7 +125,7 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        val sizeChanged = clipRect.isSameRect(preClipRect)
+        val sizeChanged = !clipRect.isSameRect(preClipRect)
         children.forEach { child ->
             val layer = child as AbsLayer
             if (sizeChanged) { // 画布区域如果发生变化则需要根据布局信息重新计算子View的位置
@@ -155,7 +161,6 @@ class ImageEditorView @JvmOverloads constructor(
         return rectF
     }
 
-
     fun updateCanvasSize(canvasSize: CanvasSize) {
         this.canvasSize = canvasSize
         resizeAnimator?.cancel()
@@ -165,6 +170,8 @@ class ImageEditorView @JvmOverloads constructor(
         val diffTop = newRect.top - currentRect.top
         val diffRight = newRect.right - currentRect.right
         val diffBottom = newRect.bottom - currentRect.bottom
+        val destScale = getNewScale(resizeRect, newRect)
+        children.forEach { child -> (child as AbsLayer).tempStagingSize() }
         resizeAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 300
             interpolator = AccelerateDecelerateInterpolator()
@@ -175,9 +182,7 @@ class ImageEditorView @JvmOverloads constructor(
                     currentRect.right + factor * diffRight, currentRect.bottom + factor * diffBottom
                 )
                 children.forEach { child ->
-                    // 根据factor得到当前的scale
-                    val destScale = getNewScale(clipRect)
-                    (child as AbsLayer).transformLayerByResize(clipRect, destScale)
+                    (child as AbsLayer).transformLayerByResize(clipRect, destScale, factor)
                 }
                 requestLayout()
             }
@@ -185,80 +190,37 @@ class ImageEditorView @JvmOverloads constructor(
         }
     }
 
-    private fun getNewScale(newRect: RectF): Float {
-        return when {
-            resizeRect.width() > resizeRect.height() -> {
-                when {
-                    newRect.width() > newRect.height() -> {
-                        if (newRect.height() < resizeRect.height()) {
-                            newRect.height() / resizeRect.height()
-                        } else 1.0f
-                    }
-
-                    else -> {
-                        newRect.width() / resizeRect.width()
-                    }
-                }
-            }
-
-            resizeRect.width() < resizeRect.height() -> {
-                when {
-                    newRect.width() < newRect.height() -> {
-                        if (newRect.width() < resizeRect.width()) {
-                            newRect.width() / resizeRect.width()
-                        } else 1.0f
-                    }
-
-                    else -> {
-                        newRect.height() / resizeRect.height()
-                    }
-                }
-            }
-
-            else -> {
-                when {
-                    newRect.width() < newRect.height() -> {
-                        newRect.width() / resizeRect.width()
-                    }
-
-                    newRect.width() > newRect.height() -> {
-                        newRect.height() / resizeRect.height()
-                    }
-
-                    else -> 1.0f
-                }
-            }
-        }
-    }
-
     override fun addView(child: View?, index: Int, params: LayoutParams?) {
-        child?.scaleX
         if (child !is AbsLayer) {
             throw IllegalArgumentException("Child $child must implement AbsLayer")
         }
         super.addView(child, index, params)
     }
 
+    private fun stagingChildResizeInfo(updateLayoutInfo: Boolean) {
+        resizeRect.set(clipRect)
+        children.forEach { child ->
+            (child as AbsLayer).stagingResizeInfo(clipRect, updateLayoutInfo = updateLayoutInfo)
+        }
+    }
+
     fun clearLayers() {
         removeAllViews()
     }
 
-
     /******************** 触摸事件 ********************/
     // 拦截所有子控件的触摸事件，交由当前父控件来统一处理
-    override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
-        return true
-    }
+    override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean = true
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        // if (!clipRect.contains(event.x, event.y)) return false
-        // scaleGestureListener.onTouchEvent(event)
         when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN -> {
                 if (!clipRect.contains(event.x, event.y)) return false
                 onDown(event)
             }
+
+            MotionEvent.ACTION_POINTER_DOWN -> onPointerDown(event)
 
             MotionEvent.ACTION_MOVE -> onMove(event)
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> onUp(event)
@@ -267,33 +229,58 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     private fun onDown(event: MotionEvent) {
+        gestureMode = GestureMode.GESTURE_DRAG
         touchDownPoint.set(event.x, event.y)
         touchDownMillis = System.currentTimeMillis()
         lastX = event.x
         lastY = event.y
     }
 
+    private fun onPointerDown(event: MotionEvent) {
+        if (event.pointerCount != 2) return
+        gestureMode = GestureMode.GESTURE_SCALE_ROTATE
+        fingerDistance = calculateDistance(event)
+        calculateCenterPoint(fingerCenterPoint, event)
+        fingerDownAngle = calculateRotation(event)
+        currentLayerView?.stagingLayerTempCacheInfo(fingerCenterPoint.x, fingerCenterPoint.y)
+    }
+
     private fun onMove(event: MotionEvent) {
-        currentLayerView?.let {
-            val dx = event.x - lastX
-            val dy = event.y - lastY
-            it.translate(dx, dy)
-        }
+        currentLayerView?.let { processMoveEvent(it, event) }
         lastX = event.x
         lastY = event.y
     }
 
     private fun onUp(event: MotionEvent) {
-        resizeRect.set(clipRect)
-        children.forEach { child ->
-            (child as AbsLayer).stagingResizeInfo(clipRect)
-        }
-
         val distance = calculateDistance(touchDownPoint.x, touchDownPoint.y, event.x, event.y)
         val isMoved = distance > MIN_MOVE_DISTANCE
         val isClickTime = System.currentTimeMillis() - touchDownMillis < MAX_CLICK_DURATION
         if (isClickTime && !isMoved) {
             processClickEvent(event.x, event.y)
+        }
+        stagingChildResizeInfo(true)
+    }
+
+    private fun processMoveEvent(absLayer: AbsLayer, event: MotionEvent) {
+        when (gestureMode) {
+            GestureMode.GESTURE_DRAG -> {
+                val dx = event.x - lastX
+                val dy = event.y - lastY
+                absLayer.translate(dx, dy)
+            }
+
+            GestureMode.GESTURE_SCALE_ROTATE -> scaleRotateLayer(absLayer, event)
+        }
+    }
+
+    private fun scaleRotateLayer(absLayer: AbsLayer, event: MotionEvent) {
+        if (event.pointerCount != 2) return
+        val newDistance = calculateDistance(event)
+        if (newDistance > MIN_MOVE_DISTANCE) {
+            val scale = newDistance / fingerDistance
+            val angle = calculateRotation(event)
+            val deltaAngle = angle - fingerDownAngle
+            absLayer.onScaleRotate(scale, deltaAngle)
         }
     }
 
@@ -306,14 +293,17 @@ class ImageEditorView @JvmOverloads constructor(
             currentLayerView = layerView
             currentLayerView?.isSelectedLayer = true
             currentLayerView?.invalidateView()
-            ValueAnimator.ofFloat(1f, 0.95f, 1f).apply {
+            ValueAnimator.ofFloat(1f, 1.05f, 1f).apply {
                 duration = 200
                 interpolator = AccelerateDecelerateInterpolator()
+                val view = (layerView as View)
+                val sx = view.scaleX
+                val sy = view.scaleY
+                layerView.resetPivotToCenter()
                 addUpdateListener {
                     val scaleFactor = it.animatedValue as Float
-                    val view = (layerView as View)
-                    view.scaleX = scaleFactor
-                    view.scaleY = scaleFactor
+                    view.scaleX = sx * scaleFactor
+                    view.scaleY = sy * scaleFactor
                 }
                 addListener(doOnStart { vibratorHelper.vibrate() })
                 start()
@@ -336,9 +326,42 @@ class ImageEditorView @JvmOverloads constructor(
         return null
     }
 
-    private fun calculateDistance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
-        val x = x2 - x1
-        val y = y2 - y1
-        return sqrt(x * x + y * y)
+    // 无动画效果切换尺寸
+    /*fun updateCanvasSize(canvasSize: CanvasSize) {
+        this.canvasSize = canvasSize
+        val currentRect = RectF(clipRect)
+        val newRect = calculateClipRect(width, height)
+        if (currentRect.isSameRect(newRect)) return
+        clipRect.set(newRect)
+        val destScale = getNewScale(clipRect)
+        children.forEach { child ->
+            (child as AbsLayer).transformLayerByResize(clipRect, destScale, 1f)
+        }
+        requestLayout()
+    }*/
+
+    fun getEditorBitmap(): Bitmap {
+        val bitmap = Bitmap.createBitmap(canvasSize.width, canvasSize.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        // 计算缩放比例
+        val scaleX = canvasSize.width.toFloat() / clipRect.width()
+        val scaleY = canvasSize.height.toFloat() / clipRect.height()
+        // 创建矩阵，将 clipRect 区域映射到 Bitmap
+        val matrix = Matrix()
+        matrix.postTranslate(-clipRect.left, -clipRect.top)
+        matrix.postScale(scaleX, scaleY)
+        // 保存 Canvas 状态
+        canvas.save()
+        // 应用矩阵变换
+        canvas.concat(matrix)
+        isSaveMode = true
+        children.forEach { child -> (child as AbsLayer).changeSaveState(true) }
+        // 调用 dispatchDraw 绘制子控件
+        dispatchDraw(canvas)
+        isSaveMode = false
+        children.forEach { child -> (child as AbsLayer).changeSaveState(false) }
+        // 恢复 Canvas 状态
+        canvas.restore()
+        return bitmap
     }
 }

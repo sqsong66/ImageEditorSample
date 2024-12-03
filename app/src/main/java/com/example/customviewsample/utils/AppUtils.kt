@@ -6,7 +6,6 @@ import com.example.customviewsample.data.CanvasSize
 fun getCanvasSizeList(): List<CanvasSize> {
     val canvasSizeList = mutableListOf<CanvasSize>()
     canvasSizeList.add(CanvasSize(width = 2016, height = 1512, iconRes = R.drawable.ic_picture_landscape, title = "Landscape", isTint = true))
-    canvasSizeList.add(CanvasSize(width = 820, height = 132, iconRes = R.drawable.pictogram_facebook, title = "Facebook Cover"))
     canvasSizeList.add(CanvasSize(width = 1512, height = 4016, iconRes = R.drawable.ic_picture_portrait, title = "Portrait", isTint = true))
     canvasSizeList.add(CanvasSize(width = 1512, height = 1512, iconRes = R.drawable.ic_picture, title = "Square", isTint = true))
     canvasSizeList.add(CanvasSize(width = 1080, height = 1920, iconRes = R.drawable.ic_size_instagram, title = "Instagram Story"))
@@ -16,7 +15,7 @@ fun getCanvasSizeList(): List<CanvasSize> {
     canvasSizeList.add(CanvasSize(width = 1080, height = 1440, iconRes = R.drawable.pictogram_tiktok, title = "TikTok Thumbnail"))
     canvasSizeList.add(CanvasSize(width = 1280, height = 720, iconRes = R.drawable.pictogram_youtube, title = "Youtube Cover"))
     canvasSizeList.add(CanvasSize(width = 2560, height = 1440, iconRes = R.drawable.pictogram_youtube, title = "Youtube Channel Art"))
-    // canvasSizeList.add(CanvasSize(width = 820, height = 132, iconRes = R.drawable.pictogram_facebook, title = "Facebook Cover"))
+    canvasSizeList.add(CanvasSize(width = 820, height = 312, iconRes = R.drawable.pictogram_facebook, title = "Facebook Cover"))
     canvasSizeList.add(CanvasSize(width = 1200, height = 628, iconRes = R.drawable.pictogram_facebook, title = "Facebook Post"))
     canvasSizeList.add(CanvasSize(width = 1080, height = 1080, iconRes = R.drawable.pictogram_facebook, title = "Facebook Marketplace"))
     canvasSizeList.add(CanvasSize(width = 725, height = 1102, iconRes = R.drawable.pictogram_pinterest, title = "Pinterest"))

@@ -45,7 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="1280x1280"
+            android:text="2016x1512"
             android:textAppearance="?attr/textAppearanceLabelMedium"
             app:layout_constraintBottom_toBottomOf="@id/doneIv"
             app:layout_constraintStart_toEndOf="@id/resizeCanvasTv"

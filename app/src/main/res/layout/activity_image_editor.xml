@@ -61,4 +61,12 @@
 
     </FrameLayout>
 
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/previewIv"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?attr/colorSurfaceContainer"
+        android:elevation="10dp"
+        android:visibility="gone" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
