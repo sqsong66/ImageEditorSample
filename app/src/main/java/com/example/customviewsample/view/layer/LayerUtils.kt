@@ -5,6 +5,7 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.View
+import com.example.customviewsample.common.ext.keepTwoDecimal
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
@@ -64,10 +65,10 @@ fun updateChildLayoutInfo(layoutInfo: LayoutInfo, clipRect: RectF, child: View) 
     // 中心点坐标需要加上控件的translationX和translationY
     val cx = (child.left + child.right) / 2f + child.translationX
     val cy = (child.top + child.bottom) / 2f + child.translationY
-    layoutInfo.centerXRatio = (cx - clipRect.left) / clipRect.width()
-    layoutInfo.centerYRatio = (cy - clipRect.top) / clipRect.height()
-    layoutInfo.widthRatio = (child.right - child.left) / clipRect.width()
-    layoutInfo.heightRatio = (child.bottom - child.top) / clipRect.height()
+    layoutInfo.centerXRatio = ((cx - clipRect.left) / clipRect.width()).keepTwoDecimal()
+    layoutInfo.centerYRatio = ((cy - clipRect.top) / clipRect.height()).keepTwoDecimal()
+    layoutInfo.widthRatio = ((child.right - child.left) / clipRect.width()).keepTwoDecimal()
+    layoutInfo.heightRatio = ((child.bottom - child.top) / clipRect.height()).keepTwoDecimal()
 }
 
 /**
@@ -136,25 +137,18 @@ fun calculateRotation(event: MotionEvent): Float {
 fun resetPivotToCenter(view: View) {
     val oldPivotX = view.pivotX
     val oldPivotY = view.pivotY
-
-    // 获取控件的宽高
-    val viewWidth = view.width.toFloat()
-    val viewHeight = view.height.toFloat()
-
-    // 计算控件中心点
-    val newPivotX = viewWidth / 2
-    val newPivotY = viewHeight / 2
-
     // 保存旧的变换矩阵
     val tempMatrix = Matrix()
     tempMatrix.postTranslate(view.translationX, view.translationY)
     tempMatrix.postScale(view.scaleX, view.scaleY, oldPivotX, oldPivotY)
     tempMatrix.postRotate(view.rotation, oldPivotX, oldPivotY)
-
     // 获取旧的顶点位置
     val oldPoints = floatArrayOf(0f, 0f)
     tempMatrix.mapPoints(oldPoints)
 
+    // 计算控件中心点
+    val newPivotX = view.width / 2f
+    val newPivotY = view.height / 2f
     // 更新锚点到控件中心
     view.pivotX = newPivotX
     view.pivotY = newPivotY

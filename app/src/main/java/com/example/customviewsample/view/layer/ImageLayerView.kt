@@ -11,11 +11,14 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
 import android.util.AttributeSet
+import android.util.Log
 import android.util.Size
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
 import androidx.appcompat.widget.AppCompatImageView
 import com.example.customviewsample.utils.dp2Px
+import kotlin.math.cos
+import kotlin.math.sin
 
 class ImageLayerView @JvmOverloads constructor(
     context: Context,
@@ -53,7 +56,7 @@ class ImageLayerView @JvmOverloads constructor(
 
     private val testPaint by lazy {
         Paint().apply {
-            color = Color.RED
+            color = Color.GREEN
             style = Paint.Style.FILL
         }
     }
@@ -119,6 +122,7 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun onUpdateLayout(clipRect: RectF) {
+        Log.w("sqsong", "onUpdateLayout, pivotX: $pivotX, pivotY: $pivotY")
         // 根据缩放比例重新计算控件的宽高
         val newWidth = clipRect.width() * layoutInfo.widthRatio
         val newHeight = clipRect.height() * layoutInfo.heightRatio
@@ -135,9 +139,7 @@ class ImageLayerView @JvmOverloads constructor(
         translationY = 0f
     }
 
-    override fun invalidateView() {
-        invalidate()
-    }
+    override fun invalidateView() = invalidate()
 
     override fun isTouchedInLayer(x: Float, y: Float): Boolean {
         // 首先判断触摸点是否在图片范围内，需要将父布局中的坐标转换为图片控件的本地坐标
@@ -162,18 +164,13 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun stagingLayerTempCacheInfo(focusX: Float, focusY: Float) {
-        val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
-        /*translationX += (pivotX - focusPoint[0]) * (1 - scaleX)
-        translationY += (pivotY - focusPoint[1]) * (1 - scaleY)
-        pivotX = focusPoint[0]
-        pivotY = focusPoint[1]*/
-        val oldPivotX = pivotX
-        val oldPivotY = pivotY
+        /*val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
+        // StackOverflow: https://stackoverflow.com/questions/14415035/setpivotx-works-strange-on-scaled-view
         // 保存旧的变换矩阵
         tempMatrix.reset()
         tempMatrix.postTranslate(translationX, translationY)
-        tempMatrix.postScale(scaleX, scaleY, oldPivotX, oldPivotY)
-        tempMatrix.postRotate(rotation, oldPivotX, oldPivotY)
+        tempMatrix.postScale(scaleX, scaleY, pivotX, pivotY)
+        tempMatrix.postRotate(rotation, pivotX, pivotY)
         // 使用旧矩阵映射原点
         val oldOrigin = floatArrayOf(0f, 0f)
         tempMatrix.mapPoints(oldOrigin)
@@ -193,27 +190,75 @@ class ImageLayerView @JvmOverloads constructor(
         val deltaX = oldOrigin[0] - newOrigin[0]
         val deltaY = oldOrigin[1] - newOrigin[1]
         translationX += deltaX
-        translationY += deltaY
+        translationY += deltaY*/
+
         layerCacheInfo = LayerTempCacheInfo(
             scaleX = scaleX,
             scaleY = scaleY,
-            rotation = rotation
+            rotation = rotation,
         )
     }
 
-    override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float) {
+   /*override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float) {
+        val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
+        val cx = x + width / 2f
+        val cy = y + height / 2f
+        val offsetX = cx - focusPoint[0]
+        val offsetY = cy - focusPoint[1]
+        translationX -= offsetX
+        translationY -= offsetY
+        scaleX = scaleFactor * layerCacheInfo.scaleX
+        scaleY = scaleFactor * layerCacheInfo.scaleY
+        rotation = deltaAngle + layerCacheInfo.rotation
+        translationX += offsetX
+        translationY += offsetY
+        invalidate()
+    }*/
+
+    override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float) {
         scaleX = scaleFactor * layerCacheInfo.scaleX
         scaleY = scaleFactor * layerCacheInfo.scaleY
         rotation = deltaAngle + layerCacheInfo.rotation
         invalidate()
     }
 
-    override fun resetPivotToCenter() {
-        resetPivotToCenter(this)
-    }
-
     override fun changeSaveState(isSave: Boolean) {
         isSaveMode = isSave
+    }
+
+    override fun resetLayerPivot() {
+//        // 重置锚点到控件中心
+//        val oldPivotX = pivotX
+//        val oldPivotY = pivotY
+//        // 保存旧的变换矩阵
+//        tempMatrix.reset()
+//        tempMatrix.postTranslate(translationX, translationY)
+//        tempMatrix.postScale(scaleX, scaleY, oldPivotX, oldPivotY)
+//        tempMatrix.postRotate(rotation, oldPivotX, oldPivotY)
+//        // 获取旧的顶点位置
+//        val oldPoints = floatArrayOf(0f, 0f)
+//        tempMatrix.mapPoints(oldPoints)
+//
+//        // 更新锚点到控件中心
+//        pivotX = width / 2f
+//        pivotY = height / 2f
+//        // 保存新的变换矩阵
+//        tempMatrix.reset()
+//        tempMatrix.postTranslate(translationX, translationY)
+//        tempMatrix.postScale(scaleX, scaleY, pivotX, pivotY)
+//        tempMatrix.postRotate(rotation, pivotX, pivotY)
+//
+//        // 获取新的顶点位置
+//        val newPoints = floatArrayOf(0f, 0f)
+//        tempMatrix.mapPoints(newPoints)
+//
+//        // 计算位置差异并调整平移
+//        val deltaX = oldPoints[0] - newPoints[0]
+//        val deltaY = oldPoints[1] - newPoints[1]
+//        translationX += deltaX
+//        translationY += deltaY
+//
+//        invalidate()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -230,6 +275,8 @@ class ImageLayerView @JvmOverloads constructor(
             canvas.restore()
             paint.strokeWidth = dp2Px<Float>(2) / scaleX
             canvas.drawPath(path, paint)
+
+            canvas.drawCircle(pivotX, pivotY, dp2Px<Float>(4) / scaleX, testPaint)
         } else {
             super.onDraw(canvas)
         }
@@ -250,8 +297,6 @@ class ImageLayerView @JvmOverloads constructor(
         // 设置初始偏移量(实验性，这里将图片放到父控件画布的右下角)
         val tx = (clipRect.width() - imageWidth) / 2
         val ty = (clipRect.height() - imageHeight) / 2
-//        translationX = tx
-//        translationY = ty
 
         val cx = clipRect.centerX() + tx
         val cy = clipRect.centerY() + ty

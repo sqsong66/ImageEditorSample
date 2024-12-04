@@ -12,6 +12,7 @@ import com.example.customviewsample.ui.editor.adapter.CanvasSizeListAdapter
 @SuppressLint("SetTextI18n")
 class CanvasSizeMenuLayout(
     rootLayout: CoordinatorLayout,
+    private val canvasSize: CanvasSize,
     private val bottomPadding: Int = 0,
     private val onCanvasSizeChanged: (CanvasSize) -> Unit,
     // View: 当前BottomSheet； Int: 当前展开高度； Boolean: 是否展开
@@ -40,6 +41,7 @@ class CanvasSizeMenuLayout(
         binding.root.updatePadding(bottom = bottomPadding)
         binding.doneIv.setOnClickListener { menuBehavior.state = EditMenuBottomSheetBehavior.STATE_HIDDEN }
         binding.canvasSizeRecycler.adapter = canvasSizeListAdapter
+        canvasSizeListAdapter.updateCheckIndex(canvasSize)
     }
 
 }

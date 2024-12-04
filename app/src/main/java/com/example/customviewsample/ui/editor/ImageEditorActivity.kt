@@ -66,7 +66,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
 
     private fun showBackgroundMenu() {
         backgroundMenuLayout = CanvasSizeMenuLayout(
-            binding.main, bottomInsets,
+            binding.main, binding.imageEditorView.canvasSize, bottomInsets,
             onCanvasSizeChanged = {
                 binding.imageEditorView.updateCanvasSize(it)
             },

@@ -1,7 +1,9 @@
 package com.example.customviewsample.view.layer
 
 data class LayerTempCacheInfo(
-    val scaleX: Float = 1f,
-    val scaleY: Float = 1f,
-    val rotation: Float = 0f,
+    var scaleX: Float = 1f,
+    var scaleY: Float = 1f,
+    var rotation: Float = 0f,
+    var translationX: Float = 0f,
+    var translationY: Float = 0f
 )

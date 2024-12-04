@@ -1,6 +1,5 @@
 package com.example.customviewsample.ui.editor.adapter
 
-import android.content.Context
 import android.content.res.ColorStateList
 import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
@@ -26,6 +25,18 @@ class CanvasSizeListAdapter(
     init {
         val itemList = getCanvasSizeList()
         submitList(itemList)
+    }
+
+    fun updateCheckIndex(canvasSize: CanvasSize) {
+        val index = dataList.indexOfFirst { it.isSameSize(canvasSize) }
+        if (index != -1) {
+            val preIndex = checkIndex
+            checkIndex = index
+            notifyItemChanged(checkIndex)
+            if (preIndex != -1) {
+                notifyItemChanged(preIndex)
+            }
+        }
     }
 
     override fun inflateData(binding: ItemCanvasSizeBinding, data: CanvasSize, position: Int) {

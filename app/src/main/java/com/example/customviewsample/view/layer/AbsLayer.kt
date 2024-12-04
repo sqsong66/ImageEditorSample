@@ -62,7 +62,6 @@ interface AbsLayer {
 
     /**
      * 子控件在触摸时先缓存当前的缩放、旋转信息，方便在移动时进行缩放、旋转操作。缩放旋转时的初始值会使用当前缓存的数值。
-     * 由于缩放旋转会影响控件的偏移量，所以在缩放旋转时需要重新计算控件缩放、旋转的锚点。详见其实现方法。
      * @param focusX 双指触摸时中心点x轴坐标
      * @param focusY 双指触摸时中心点y轴坐标
      */
@@ -73,12 +72,9 @@ interface AbsLayer {
      * @param scaleFactor 缩放因子
      * @param deltaAngle 旋转角度
      */
-    fun onScaleRotate(scaleFactor: Float, deltaAngle: Float)
-
-    /**
-     * 将子控件的锚点重置到中心点(手势缩放旋转的时候会改变控件的锚点)。
-     */
-    fun resetPivotToCenter()
+    fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float)
 
     fun changeSaveState(isSave: Boolean)
+
+    fun resetLayerPivot()
 }

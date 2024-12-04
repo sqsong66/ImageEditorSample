@@ -12,7 +12,6 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -64,7 +63,8 @@ class ImageEditorView @JvmOverloads constructor(
     private var fingerDownAngle = 0f
 
     private val vibratorHelper by lazy { VibratorHelper(context) }
-    private var canvasSize = CanvasSize(width = 1512, height = 4016, iconRes = R.drawable.ic_picture_portrait, title = "Portrait", isTint = true)
+    var canvasSize = CanvasSize(width = 1512, height = 4016, iconRes = R.drawable.ic_picture_portrait, title = "Portrait", isTint = true)
+        private set
 
     private val testPaint by lazy {
         Paint().apply {
@@ -112,8 +112,8 @@ class ImageEditorView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         clipRect.set(calculateClipRect(w, h))
-        Log.d("sqsong", "onSizeChanged: clipRect ratio: ${clipRect.width() / clipRect.height()}")
-        stagingChildResizeInfo(false)
+        stagingChildResizeInfo(updateLayoutInfo = false)
+        currentLayerView?.resetLayerPivot()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -200,7 +200,9 @@ class ImageEditorView @JvmOverloads constructor(
     private fun stagingChildResizeInfo(updateLayoutInfo: Boolean) {
         resizeRect.set(clipRect)
         children.forEach { child ->
-            (child as AbsLayer).stagingResizeInfo(clipRect, updateLayoutInfo = updateLayoutInfo)
+            (child as AbsLayer).apply {
+                stagingResizeInfo(clipRect, updateLayoutInfo = updateLayoutInfo)
+            }
         }
     }
 
@@ -258,7 +260,8 @@ class ImageEditorView @JvmOverloads constructor(
         if (isClickTime && !isMoved) {
             processClickEvent(event.x, event.y)
         }
-        stagingChildResizeInfo(true)
+        stagingChildResizeInfo(updateLayoutInfo = true)
+        currentLayerView?.resetLayerPivot()
     }
 
     private fun processMoveEvent(absLayer: AbsLayer, event: MotionEvent) {
@@ -280,7 +283,7 @@ class ImageEditorView @JvmOverloads constructor(
             val scale = newDistance / fingerDistance
             val angle = calculateRotation(event)
             val deltaAngle = angle - fingerDownAngle
-            absLayer.onScaleRotate(scale, deltaAngle)
+            absLayer.onScaleRotate(scale, deltaAngle, fingerCenterPoint.x, fingerCenterPoint.y)
         }
     }
 
@@ -299,7 +302,7 @@ class ImageEditorView @JvmOverloads constructor(
                 val view = (layerView as View)
                 val sx = view.scaleX
                 val sy = view.scaleY
-                layerView.resetPivotToCenter()
+                // layerView.resetPivotToCenter()
                 addUpdateListener {
                     val scaleFactor = it.animatedValue as Float
                     view.scaleX = sx * scaleFactor
