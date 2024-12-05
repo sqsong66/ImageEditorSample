@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "CustomViewSample"
 include(":app")
- 
+include(":nativelib")

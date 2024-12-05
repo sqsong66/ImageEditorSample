@@ -17,8 +17,6 @@ import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
 import androidx.appcompat.widget.AppCompatImageView
 import com.example.customviewsample.utils.dp2Px
-import kotlin.math.cos
-import kotlin.math.sin
 
 class ImageLayerView @JvmOverloads constructor(
     context: Context,
@@ -164,34 +162,10 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun stagingLayerTempCacheInfo(focusX: Float, focusY: Float) {
-        /*val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
         // StackOverflow: https://stackoverflow.com/questions/14415035/setpivotx-works-strange-on-scaled-view
-        // 保存旧的变换矩阵
-        tempMatrix.reset()
-        tempMatrix.postTranslate(translationX, translationY)
-        tempMatrix.postScale(scaleX, scaleY, pivotX, pivotY)
-        tempMatrix.postRotate(rotation, pivotX, pivotY)
-        // 使用旧矩阵映射原点
-        val oldOrigin = floatArrayOf(0f, 0f)
-        tempMatrix.mapPoints(oldOrigin)
-        // 更新锚点到新的焦点
-        pivotX = focusPoint[0]
-        pivotY = focusPoint[1]
-        // 保存新的变换矩阵
-        tempMatrix.reset()
-        tempMatrix.postTranslate(translationX, translationY)
-        tempMatrix.postScale(scaleX, scaleY, pivotX, pivotY)
-        tempMatrix.postRotate(rotation, pivotX, pivotY)
-        // 使用新矩阵映射原点
-        val newOrigin = floatArrayOf(0f, 0f)
-        tempMatrix.mapPoints(newOrigin)
-
-        // 计算差值并调整平移
-        val deltaX = oldOrigin[0] - newOrigin[0]
-        val deltaY = oldOrigin[1] - newOrigin[1]
-        translationX += deltaX
-        translationY += deltaY*/
-
+        // 在进行缩放、旋转操作时，先将缩放锚点设置到双指中心点
+        val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
+        resetViewPivotTo(focusPoint[0], focusPoint[1], tempMatrix)
         layerCacheInfo = LayerTempCacheInfo(
             scaleX = scaleX,
             scaleY = scaleY,
@@ -199,27 +173,11 @@ class ImageLayerView @JvmOverloads constructor(
         )
     }
 
-   /*override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float) {
-        val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
-        val cx = x + width / 2f
-        val cy = y + height / 2f
-        val offsetX = cx - focusPoint[0]
-        val offsetY = cy - focusPoint[1]
-        translationX -= offsetX
-        translationY -= offsetY
-        scaleX = scaleFactor * layerCacheInfo.scaleX
-        scaleY = scaleFactor * layerCacheInfo.scaleY
-        rotation = deltaAngle + layerCacheInfo.rotation
-        translationX += offsetX
-        translationY += offsetY
-        invalidate()
-    }*/
-
     override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float) {
         scaleX = scaleFactor * layerCacheInfo.scaleX
         scaleY = scaleFactor * layerCacheInfo.scaleY
         rotation = deltaAngle + layerCacheInfo.rotation
-        invalidate()
+        // invalidate()
     }
 
     override fun changeSaveState(isSave: Boolean) {
@@ -227,56 +185,34 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun resetLayerPivot() {
-//        // 重置锚点到控件中心
-//        val oldPivotX = pivotX
-//        val oldPivotY = pivotY
-//        // 保存旧的变换矩阵
-//        tempMatrix.reset()
-//        tempMatrix.postTranslate(translationX, translationY)
-//        tempMatrix.postScale(scaleX, scaleY, oldPivotX, oldPivotY)
-//        tempMatrix.postRotate(rotation, oldPivotX, oldPivotY)
-//        // 获取旧的顶点位置
-//        val oldPoints = floatArrayOf(0f, 0f)
-//        tempMatrix.mapPoints(oldPoints)
-//
-//        // 更新锚点到控件中心
-//        pivotX = width / 2f
-//        pivotY = height / 2f
-//        // 保存新的变换矩阵
-//        tempMatrix.reset()
-//        tempMatrix.postTranslate(translationX, translationY)
-//        tempMatrix.postScale(scaleX, scaleY, pivotX, pivotY)
-//        tempMatrix.postRotate(rotation, pivotX, pivotY)
-//
-//        // 获取新的顶点位置
-//        val newPoints = floatArrayOf(0f, 0f)
-//        tempMatrix.mapPoints(newPoints)
-//
-//        // 计算位置差异并调整平移
-//        val deltaX = oldPoints[0] - newPoints[0]
-//        val deltaY = oldPoints[1] - newPoints[1]
-//        translationX += deltaX
-//        translationY += deltaY
-//
-//        invalidate()
+        resetViewPivotTo(width / 2f, height / 2f, tempMatrix)
+        // invalidate()
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        path.reset()
-        path.addRoundRect(0f, 0f, w.toFloat(), h.toFloat(), cornerRadius, cornerRadius, Path.Direction.CW)
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        // 当控件的尺寸发生变化时，重置缩放锚点(为中心点)
+        resetLayerPivot()
+    }
+
+    override fun setScaleX(scaleX: Float) {
+        super.setScaleX(scaleX)
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         if (isSelectedLayer && !isSaveMode) {
             canvas.save()
+            path.reset()
+            val radius = cornerRadius / scaleX
+            Log.d("sqsong", "onDraw: $isSelectedLayer, scaleX: $scaleX, radius: $radius")
+            path.addRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, Path.Direction.CW)
             canvas.clipPath(path)
             super.onDraw(canvas)
             canvas.restore()
             paint.strokeWidth = dp2Px<Float>(2) / scaleX
             canvas.drawPath(path, paint)
-
-            canvas.drawCircle(pivotX, pivotY, dp2Px<Float>(4) / scaleX, testPaint)
+            // canvas.drawCircle(pivotX, pivotY, dp2Px<Float>(4) / scaleX, testPaint)
         } else {
             super.onDraw(canvas)
         }

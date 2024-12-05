@@ -63,7 +63,7 @@ class ImageEditorView @JvmOverloads constructor(
     private var fingerDownAngle = 0f
 
     private val vibratorHelper by lazy { VibratorHelper(context) }
-    var canvasSize = CanvasSize(width = 1512, height = 4016, iconRes = R.drawable.ic_picture_portrait, title = "Portrait", isTint = true)
+    var canvasSize = CanvasSize(width = 1512, height = 1512, iconRes = R.drawable.ic_picture, title = "Square", isTint = true)
         private set
 
     private val testPaint by lazy {
@@ -113,7 +113,6 @@ class ImageEditorView @JvmOverloads constructor(
         super.onSizeChanged(w, h, oldw, oldh)
         clipRect.set(calculateClipRect(w, h))
         stagingChildResizeInfo(updateLayoutInfo = false)
-        currentLayerView?.resetLayerPivot()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -210,6 +209,12 @@ class ImageEditorView @JvmOverloads constructor(
         removeAllViews()
     }
 
+    private fun clearCurrentLayer() {
+        currentLayerView?.isSelectedLayer = false
+        currentLayerView?.invalidateView()
+        currentLayerView = null
+    }
+
     /******************** 触摸事件 ********************/
     // 拦截所有子控件的触摸事件，交由当前父控件来统一处理
     override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean = true
@@ -218,7 +223,10 @@ class ImageEditorView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN -> {
-                if (!clipRect.contains(event.x, event.y)) return false
+                if (!clipRect.contains(event.x, event.y)) {
+                    clearCurrentLayer()
+                    return false
+                }
                 onDown(event)
             }
 
@@ -290,8 +298,7 @@ class ImageEditorView @JvmOverloads constructor(
     private fun processClickEvent(x: Float, y: Float) {
         findTouchedLayer(x, y)?.let { layerView ->
             if (currentLayerView == layerView) return
-            currentLayerView?.isSelectedLayer = false
-            currentLayerView?.invalidateView()
+            clearCurrentLayer()
 
             currentLayerView = layerView
             currentLayerView?.isSelectedLayer = true
@@ -302,7 +309,6 @@ class ImageEditorView @JvmOverloads constructor(
                 val view = (layerView as View)
                 val sx = view.scaleX
                 val sy = view.scaleY
-                // layerView.resetPivotToCenter()
                 addUpdateListener {
                     val scaleFactor = it.animatedValue as Float
                     view.scaleX = sx * scaleFactor

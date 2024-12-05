@@ -131,41 +131,33 @@ fun calculateRotation(event: MotionEvent): Float {
 }
 
 /**
- * 重置锚点到控件中心
- * @param view 控件View
+ * 将View的旋转缩放锚点设置到新的位置
+ * @param newPivotX 新的缩放锚点x轴坐标
+ * @param newPivotY 新的缩放锚点y轴坐标
+ * @param matrix 辅助Matrix
  */
-fun resetPivotToCenter(view: View) {
-    val oldPivotX = view.pivotX
-    val oldPivotY = view.pivotY
-    // 保存旧的变换矩阵
-    val tempMatrix = Matrix()
-    tempMatrix.postTranslate(view.translationX, view.translationY)
-    tempMatrix.postScale(view.scaleX, view.scaleY, oldPivotX, oldPivotY)
-    tempMatrix.postRotate(view.rotation, oldPivotX, oldPivotY)
-    // 获取旧的顶点位置
-    val oldPoints = floatArrayOf(0f, 0f)
-    tempMatrix.mapPoints(oldPoints)
+fun View.resetViewPivotTo(newPivotX: Float, newPivotY: Float, matrix: Matrix) {
+    val prePivotX = pivotX
+    val prePivotY = pivotY
 
-    // 计算控件中心点
-    val newPivotX = view.width / 2f
-    val newPivotY = view.height / 2f
-    // 更新锚点到控件中心
-    view.pivotX = newPivotX
-    view.pivotY = newPivotY
+    matrix.reset()
+    matrix.postTranslate(translationX, translationY)
+    matrix.postScale(scaleX, scaleY, prePivotX, prePivotY)
+    matrix.postRotate(rotation, prePivotX, prePivotY)
+    val preOrigin = floatArrayOf(0f, 0f)
+    matrix.mapPoints(preOrigin)
 
-    // 保存新的变换矩阵
-    tempMatrix.reset()
-    tempMatrix.postTranslate(view.translationX, view.translationY)
-    tempMatrix.postScale(view.scaleX, view.scaleY, newPivotX, newPivotY)
-    tempMatrix.postRotate(view.rotation, newPivotX, newPivotY)
+    pivotX = newPivotX
+    pivotY = newPivotY
+    matrix.reset()
+    matrix.postTranslate(translationX, translationY)
+    matrix.postScale(scaleX, scaleY, newPivotX, newPivotY)
+    matrix.postRotate(rotation, newPivotX, newPivotY)
+    val newOrigin = floatArrayOf(0f, 0f)
+    matrix.mapPoints(newOrigin)
 
-    // 获取新的顶点位置
-    val newPoints = floatArrayOf(0f, 0f)
-    tempMatrix.mapPoints(newPoints)
-
-    // 计算位置差异并调整平移
-    val deltaX = oldPoints[0] - newPoints[0]
-    val deltaY = oldPoints[1] - newPoints[1]
-    view.translationX += deltaX
-    view.translationY += deltaY
+    val deltaX = preOrigin[0] - newOrigin[0]
+    val deltaY = preOrigin[1] - newOrigin[1]
+    translationX += deltaX
+    translationY += deltaY
 }

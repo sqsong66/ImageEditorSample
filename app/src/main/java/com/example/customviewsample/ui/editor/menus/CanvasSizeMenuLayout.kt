@@ -42,6 +42,7 @@ class CanvasSizeMenuLayout(
         binding.doneIv.setOnClickListener { menuBehavior.state = EditMenuBottomSheetBehavior.STATE_HIDDEN }
         binding.canvasSizeRecycler.adapter = canvasSizeListAdapter
         canvasSizeListAdapter.updateCheckIndex(canvasSize)
+        binding.dimensionTv.text = "${canvasSize.width}x${canvasSize.height}"
     }
 
 }

@@ -74,7 +74,14 @@ interface AbsLayer {
      */
     fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float)
 
+    /**
+     * 在保存操作时，需要修改子控件中的绘制方法，防止不必要的信息绘制到最终结果图。
+     * @param isSave 是否保存状态
+     */
     fun changeSaveState(isSave: Boolean)
 
+    /**
+     * 重置子控件的缩放、旋转锚点(为自身中心点)
+     */
     fun resetLayerPivot()
 }
