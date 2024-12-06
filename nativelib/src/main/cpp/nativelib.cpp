@@ -9,7 +9,7 @@ JNIEXPORT jobject JNICALL
 Java_com_sqsong_nativelib_NativeLib_getBitmapOutlinePath(JNIEnv *env, jobject thiz, jobject bitmap) {
 // 将 Android Bitmap 转换为 OpenCV Mat
     AndroidBitmapInfo info;
-    void* pixels = nullptr;
+    void *pixels = nullptr;
     if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS) {
         // 错误处理
         return nullptr;
@@ -49,12 +49,12 @@ Java_com_sqsong_nativelib_NativeLib_getBitmapOutlinePath(JNIEnv *env, jobject th
     jmethodID closeMethod = env->GetMethodID(pathClass, "close", "()V");
 
     // 将轮廓转换为 Path
-    for (const auto& contour : contours) {
+    for (const auto &contour: contours) {
         if (contour.empty()) continue;
         // 移动到第一个点（注意坐标需要减去边框大小）
-        env->CallVoidMethod(path, moveToMethod, (jfloat)(contour[0].x - borderSize), (jfloat)(contour[0].y - borderSize));
+        env->CallVoidMethod(path, moveToMethod, (jfloat) (contour[0].x - borderSize), (jfloat) (contour[0].y - borderSize));
         for (size_t i = 1; i < contour.size(); ++i) {
-            env->CallVoidMethod(path, lineToMethod, (jfloat)(contour[i].x - borderSize), (jfloat)(contour[i].y - borderSize));
+            env->CallVoidMethod(path, lineToMethod, (jfloat) (contour[i].x - borderSize), (jfloat) (contour[i].y - borderSize));
         }
         env->CallVoidMethod(path, closeMethod);
     }

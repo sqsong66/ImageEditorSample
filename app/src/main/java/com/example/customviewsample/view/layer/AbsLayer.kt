@@ -84,4 +84,6 @@ interface AbsLayer {
      * 重置子控件的缩放、旋转锚点(为自身中心点)
      */
     fun resetLayerPivot()
+
+    fun startTouchAnim()
 }

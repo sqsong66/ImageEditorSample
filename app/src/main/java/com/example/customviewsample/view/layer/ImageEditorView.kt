@@ -12,6 +12,7 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -96,6 +97,7 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     override fun dispatchDraw(canvas: Canvas) {
+        Log.i("sqsong", "ImageEditorView dispatchDraw")
         if (isSaveMode) {
             super.dispatchDraw(canvas)
         } else {
@@ -137,7 +139,7 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     fun addImageLayer(bitmap: Bitmap) {
-        ImageLayerView(context, cornerRadius = cornerRadius / 2f, isSelectedLayer = true).apply {
+        ImageLayerView(context, cornerRadius = dp2Px(6), isSelectedLayer = true).apply {
             onInitialLayout(this@ImageEditorView, bitmap, clipRect)
             currentLayerView?.isSelectedLayer = false
             currentLayerView?.invalidateView()
@@ -296,27 +298,14 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     private fun processClickEvent(x: Float, y: Float) {
-        findTouchedLayer(x, y)?.let { layerView ->
-            if (currentLayerView == layerView) return
+        findTouchedLayer(x, y)?.apply {
+            if (currentLayerView == this) return
             clearCurrentLayer()
-
-            currentLayerView = layerView
-            currentLayerView?.isSelectedLayer = true
-            currentLayerView?.invalidateView()
-            ValueAnimator.ofFloat(1f, 1.05f, 1f).apply {
-                duration = 200
-                interpolator = AccelerateDecelerateInterpolator()
-                val view = (layerView as View)
-                val sx = view.scaleX
-                val sy = view.scaleY
-                addUpdateListener {
-                    val scaleFactor = it.animatedValue as Float
-                    view.scaleX = sx * scaleFactor
-                    view.scaleY = sy * scaleFactor
-                }
-                addListener(doOnStart { vibratorHelper.vibrate() })
-                start()
-            }
+            isSelectedLayer = true
+            invalidateView()
+            vibratorHelper.vibrate()
+            startTouchAnim()
+            currentLayerView = this
         } ?: run {
             currentLayerView?.isSelectedLayer = false
             currentLayerView?.invalidateView()

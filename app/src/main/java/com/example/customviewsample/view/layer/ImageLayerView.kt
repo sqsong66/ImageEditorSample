@@ -1,5 +1,6 @@
 package com.example.customviewsample.view.layer
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -15,6 +16,7 @@ import android.util.Log
 import android.util.Size
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
+import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.appcompat.widget.AppCompatImageView
 import com.example.customviewsample.utils.dp2Px
 
@@ -32,12 +34,14 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     private val path = Path()
+    private val pathRect = RectF()
     private var isSaveMode = false
     private val resizeRect = RectF()
     private val tempMatrix = Matrix()
     private val centerPoint = PointF()
     private val layoutInfo = LayoutInfo()
     private var tempCenterPoint = PointF()
+    private val borderWidth = dp2Px<Float>(2)
     private var tempSize = Size(0, 0)
     private var resizeSize = Size(0, 0)
     private var layerCacheInfo = LayerTempCacheInfo()
@@ -48,7 +52,7 @@ class ImageLayerView @JvmOverloads constructor(
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
-            strokeWidth = dp2Px(2)
+            strokeWidth = borderWidth
         }
     }
 
@@ -75,9 +79,7 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun stagingResizeInfo(clipRect: RectF, updateLayoutInfo: Boolean) {
-        if (updateLayoutInfo) {
-            updateLayoutInfo(clipRect)
-        }
+        if (updateLayoutInfo) updateLayoutInfo(clipRect)
         resizeRect.set(clipRect)
         // update center point
         val cx = (left + right) / 2f + translationX
@@ -120,7 +122,7 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun onUpdateLayout(clipRect: RectF) {
-        Log.w("sqsong", "onUpdateLayout, pivotX: $pivotX, pivotY: $pivotY")
+        // Log.w("sqsong", "onUpdateLayout, pivotX: $pivotX, pivotY: $pivotY")
         // 根据缩放比例重新计算控件的宽高
         val newWidth = clipRect.width() * layoutInfo.widthRatio
         val newHeight = clipRect.height() * layoutInfo.heightRatio
@@ -146,7 +148,7 @@ class ImageLayerView @JvmOverloads constructor(
             return false
         }
 
-        // 将坐标隐射到图片Bitmap上，如果透明度不为0，则认为是在图片上，否则认为是在图片外
+        // 将坐标映射到图片Bitmap上，如果透明度不为0，则认为是在图片上，否则认为是在图片外
         val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return false
         val scale = minOf(width.toFloat() / bitmap.width, height.toFloat() / bitmap.height)
         val dx = (width - bitmap.width * scale) / 2
@@ -173,11 +175,14 @@ class ImageLayerView @JvmOverloads constructor(
         )
     }
 
+
     override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float) {
         scaleX = scaleFactor * layerCacheInfo.scaleX
         scaleY = scaleFactor * layerCacheInfo.scaleY
         rotation = deltaAngle + layerCacheInfo.rotation
-        // invalidate()
+        Log.w("sqsong", "onScaleRotate: scaleX: $scaleX, scaleY: $scaleY, rotation: $rotation")
+        // 重绘(边框)
+        invalidate()
     }
 
     override fun changeSaveState(isSave: Boolean) {
@@ -186,7 +191,29 @@ class ImageLayerView @JvmOverloads constructor(
 
     override fun resetLayerPivot() {
         resetViewPivotTo(width / 2f, height / 2f, tempMatrix)
-        // invalidate()
+    }
+
+    override fun startTouchAnim() {
+        // 图层选中时的缩放动画，宽度最多放大25dp，高度按比例计算。这样能保证无论图层放大多少，缩放在视觉上保持一致。
+        // 否则可能出现图层放大也大，缩放的幅度也会越大
+        val currentWidth = width * scaleX
+        val currentHeight = height * scaleY
+        val maxXSize = dp2Px<Float>(25)
+        val maxYSize = maxXSize * height / width
+        ValueAnimator.ofFloat(0f, 1.0f, 0f).apply {
+            duration = 200
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener {
+                val scaleFactor = it.animatedValue as Float
+                val newWidth = currentWidth + maxXSize * scaleFactor
+                val newHeight = currentHeight + maxYSize * scaleFactor
+                val sx = newWidth / width
+                val sy = newHeight / height
+                scaleX = sx
+                scaleY = sy
+            }
+            start()
+        }
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -195,27 +222,36 @@ class ImageLayerView @JvmOverloads constructor(
         resetLayerPivot()
     }
 
-    override fun setScaleX(scaleX: Float) {
-        super.setScaleX(scaleX)
-        invalidate()
-    }
-
     override fun onDraw(canvas: Canvas) {
         if (isSelectedLayer && !isSaveMode) {
-            canvas.save()
-            path.reset()
-            val radius = cornerRadius / scaleX
-            Log.d("sqsong", "onDraw: $isSelectedLayer, scaleX: $scaleX, radius: $radius")
-            path.addRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, Path.Direction.CW)
-            canvas.clipPath(path)
-            super.onDraw(canvas)
-            canvas.restore()
-            paint.strokeWidth = dp2Px<Float>(2) / scaleX
-            canvas.drawPath(path, paint)
-            // canvas.drawCircle(pivotX, pivotY, dp2Px<Float>(4) / scaleX, testPaint)
+            drawSelectedLayer(canvas) {
+                super.onDraw(canvas)
+            }
         } else {
             super.onDraw(canvas)
         }
+    }
+
+    private inline fun drawSelectedLayer(canvas: Canvas, superDraw: () -> Unit) {
+        val intrinsicWidth = drawable?.intrinsicWidth ?: 0
+        val intrinsicHeight = drawable?.intrinsicHeight ?: 0
+        if (intrinsicWidth <= 0 || intrinsicHeight <= 0) {
+            superDraw()
+            return
+        }
+        // 使用图片矩阵来计算clip区域，这样可以让边框完全贴合图片；如果直接使用控件的宽高来计算，可能会出现边框与图片之间有间隙
+        pathRect.set(0f, 0f, intrinsicWidth.toFloat(), intrinsicHeight.toFloat())
+        imageMatrix.mapRect(pathRect)
+        path.reset()
+        val radius = cornerRadius / scaleX
+        path.addRoundRect(pathRect, radius, radius, Path.Direction.CW)
+        canvas.save()
+        canvas.clipPath(path)
+        superDraw()
+        canvas.restore()
+
+        paint.strokeWidth = borderWidth / scaleX
+        canvas.drawPath(path, paint)
     }
 
     fun onInitialLayout(parentView: ViewGroup, bitmap: Bitmap, clipRect: RectF) {
@@ -227,6 +263,7 @@ class ImageLayerView @JvmOverloads constructor(
             imageHeight = clipRect.height() * SCALE_FACTOR
             imageWidth = imageHeight * bitmap.width / bitmap.height
         }
+        Log.w("sqsong", "onInitialLayout: bitmap size: ${bitmap.width}x${bitmap.height}, image size: $imageWidth x $imageHeight")
         val layoutParams = LayoutParams(imageWidth.toInt(), imageHeight.toInt())
         // 添加控件到父布局中
         parentView.addView(this, layoutParams)
