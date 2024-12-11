@@ -45,9 +45,9 @@ class ImageCutoutActivity : BaseActivity<ActivityImageCutoutBinding>(ActivityIma
             Log.d("songmao", "decode bitmap cost: ${end - start}ms")
             val bitmap = NativeLib.cutoutBitmapBySource(cutoutBitmap, resultBitmap)
             Log.w("songmao", "Cutout bitmap cost: ${System.currentTimeMillis() - end}ms")
-            bitmap?.let {
+            /*bitmap?.let {
                 saveBitmapToGallery(this@ImageCutoutActivity, it, true)
-            }
+            }*/
             emit(bitmap)
         }.flowOn(Dispatchers.IO)
             .catch { ex -> ex.printStackTrace() }
