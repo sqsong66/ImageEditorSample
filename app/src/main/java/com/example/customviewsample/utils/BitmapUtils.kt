@@ -1,12 +1,21 @@
 package com.example.customviewsample.utils
 
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.media.MediaScannerConnection
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import androidx.core.content.FileProvider
 import com.bumptech.glide.Glide
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 
@@ -160,4 +169,46 @@ fun decodeBitmapToRawBytes(context: Context, uri: Uri?, maxSize: Int): ByteArray
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
         stream.toByteArray()
     }
+}
+
+fun saveBitmapToGallery(context: Context, bitmap: Bitmap, isPNG: Boolean): Uri {
+    val suffix = if (isPNG) ".png" else ".jpg"
+    val fileName = "IMG_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(System.currentTimeMillis())}$suffix"
+    var destFile: File? = null
+    val destUri = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, if (isPNG) "image/png" else "image/jpeg")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                ?: throw IllegalStateException("Failed insert new image.")
+        }
+
+        else -> {
+            val destDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+            if (!destDir.exists()) destDir.mkdirs()
+            destFile = destDir.resolve(fileName)
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", destFile)
+        }
+    }
+    // 将图片数据写入到Uri
+    context.contentResolver.openOutputStream(destUri)?.use {
+        bitmap.compress(if (isPNG) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, 100, it)
+    }
+    // 保存图片后，更新操作状态
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.IS_PENDING, 0)
+        }
+        context.contentResolver.update(destUri, contentValues, null, null)
+    }
+    destFile?.let {
+        MediaScannerConnection.scanFile(context, arrayOf(it.absolutePath), null) { _, _ ->
+            // Log.d("songmao", "saveBitmapToGallery, scan file path: $path, uri: $uri")
+        }
+    }
+    return destUri
 }

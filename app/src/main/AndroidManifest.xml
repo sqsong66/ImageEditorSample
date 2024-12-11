@@ -15,6 +15,9 @@
         android:theme="@style/Theme.CustomViewSample"
         tools:targetApi="31">
         <activity
+            android:name=".ui.cutout.ImageCutoutActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.segment.ImageSegmentationActivity"
             android:exported="false" />
         <activity

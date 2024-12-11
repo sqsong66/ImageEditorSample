@@ -15,7 +15,7 @@ set(OpenCV_LIBS
 )
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
-        nativelib.cpp)
+        nativelib.cpp LibAlpha.cpp)
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
         android

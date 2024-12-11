@@ -11,4 +11,6 @@ object NativeLib {
     }
 
     external fun getBitmapOutlinePath(bitmap: Bitmap): Path
+
+    external fun cutoutBitmapBySource(cutoutBitmap: Bitmap, srcBitmap: Bitmap): Bitmap?
 }

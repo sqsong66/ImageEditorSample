@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import com.example.customviewsample.base.BaseActivity
 import com.example.customviewsample.databinding.ActivityMainBinding
+import com.example.customviewsample.ui.cutout.ImageCutoutActivity
 import com.example.customviewsample.ui.editor.ImageEditorActivity
 import com.example.customviewsample.ui.segment.ImageSegmentationActivity
 
@@ -17,6 +18,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::infl
     override fun initListeners() {
         binding.imageEditor.setOnClickListener(this)
         binding.imageSegmentationBtn.setOnClickListener(this)
+        binding.imageCutoutBtn.setOnClickListener(this)
     }
 
     override fun onClick(v: View?) {
@@ -27,6 +29,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::infl
 
             R.id.imageSegmentationBtn -> {
                 startActivity(Intent(this, ImageSegmentationActivity::class.java))
+            }
+
+            R.id.imageCutoutBtn -> {
+                startActivity(Intent(this, ImageCutoutActivity::class.java))
             }
         }
     }

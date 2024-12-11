@@ -86,4 +86,9 @@ interface AbsLayer {
     fun resetLayerPivot()
 
     fun startTouchAnim()
+
+    /**
+     * 是否检测图层中心点与父容器中心点重合以及旋转角度是否是90度的整数倍
+     */
+    fun detectCenterCoordinateAndRotation(): Boolean
 }

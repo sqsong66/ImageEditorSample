@@ -198,7 +198,7 @@ class ImageLayerView @JvmOverloads constructor(
         // 否则可能出现图层放大也大，缩放的幅度也会越大
         val currentWidth = width * scaleX
         val currentHeight = height * scaleY
-        val maxXSize = dp2Px<Float>(25)
+        val maxXSize = dp2Px<Float>(20)
         val maxYSize = maxXSize * height / width
         ValueAnimator.ofFloat(0f, 1.0f, 0f).apply {
             duration = 200
@@ -215,6 +215,8 @@ class ImageLayerView @JvmOverloads constructor(
             start()
         }
     }
+
+    override fun detectCenterCoordinateAndRotation(): Boolean = true
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
