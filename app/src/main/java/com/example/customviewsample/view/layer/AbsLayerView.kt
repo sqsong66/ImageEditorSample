@@ -3,13 +3,14 @@ package com.example.customviewsample.view.layer
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Matrix
+import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.util.Log
 import android.util.Size
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.ImageView
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.LayerType
@@ -18,9 +19,15 @@ abstract class AbsLayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
-) : View(context, attrs, defStyleAttr), AbsLayer {
+) : View(context, attrs, defStyleAttr) {
 
-    private var isSaveMode = false
+    var isSelectedLayer = false
+    protected val pathRect = RectF()
+    protected var isSaveMode = false
+    protected val borderPath = Path()
+    protected val borderWidth = dp2Px<Float>(2)
+    protected val cornerRadius = dp2Px<Float>(6)
+
     private val resizeRect = RectF()
     private val tempMatrix = Matrix()
     private val centerPoint = PointF()
@@ -30,12 +37,29 @@ abstract class AbsLayerView @JvmOverloads constructor(
     private var resizeSize = Size(0, 0)
     private var layerCacheInfo = LayerTempCacheInfo()
 
-    override val absLayoutInfo: LayoutInfo = layoutInfo
+    @LayerType
+    abstract fun getViewLayerType(): Int
 
-    override val absLayerType: Int
-        get() = LayerType.LAYER_IMAGE
+    protected open fun detectCenterCoordinateAndRotation(): Boolean = true
 
-    override fun translateLayer(dx: Float, dy: Float, pcx: Float, pcy: Float): Int {
+    /**
+     * 判断触摸点是否在子控件内，如果是图片控件[ImageView]则判断触摸点是否在图片的非透明区域。
+     * @param x 触摸点x轴坐标
+     * @param y 触摸点y轴坐标
+     * @return 是否在子控件内
+     */
+    open fun isTouchedInLayer(x: Float, y: Float): Boolean = false
+
+    /**
+     * 子控件进行平移操作
+     * @param dx x轴偏移量
+     * @param dy y轴偏移量
+     * @param pcx 父控件中心点x轴坐标
+     * @param pcy 父控件中心点y轴坐标
+     * @return 判断子控件坐标与父控件坐标的关系(是否重合)
+     */
+    @CoordinateLocation
+    fun translateLayer(dx: Float, dy: Float, pcx: Float, pcy: Float): Int {
         translate(dx, dy)
         return CoordinateLocation.COORDINATE_NONE
     }
@@ -45,11 +69,20 @@ abstract class AbsLayerView @JvmOverloads constructor(
         translationY += dy
     }
 
-    override fun updateLayoutInfo(clipRect: RectF) {
+    /**
+     * 更新子View的布局信息
+     * @param clipRect 父控件画布区域
+     */
+    fun updateLayoutInfo(clipRect: RectF) {
         updateChildLayoutInfo(layoutInfo, clipRect, this)
     }
 
-    override fun stagingResizeInfo(clipRect: RectF, updateLayoutInfo: Boolean) {
+    /**
+     * 父控件尺寸发生变化时或触摸过后，保存子控件的尺寸大小以及中心点以及位置信息，方便在进行尺寸切换时进行动画过渡。
+     * @param clipRect 父控件画布区域
+     * @param updateLayoutInfo 是否更新布局信息
+     */
+    fun stagingResizeInfo(clipRect: RectF, updateLayoutInfo: Boolean) {
         if (updateLayoutInfo) updateLayoutInfo(clipRect)
         resizeRect.set(clipRect)
         // update center point
@@ -59,12 +92,22 @@ abstract class AbsLayerView @JvmOverloads constructor(
         resizeSize = Size(right - left, bottom - top)
     }
 
-    override fun tempStagingSize() {
+    /**
+     * 在进行修改画布尺寸前，临时保存子控件的尺寸大小以及中心点位置信息，
+     * 方便在进行尺寸吸怪动画时进行流畅变换过渡。
+     */
+    fun tempStagingSize() {
         tempSize = Size(right - left, bottom - top)
         tempCenterPoint.set((left + right) / 2f + translationX, (top + bottom) / 2f + translationY)
     }
 
-    override fun transformLayerByResize(clipRect: RectF, destScale: Float, factor: Float) {
+    /**
+     * 父控件切换画布尺寸时，子控件根据画布局域以及目标缩放比例进行变换
+     * @param clipRect 父控件画布区域
+     * @param destScale 目标缩放比例(最终缩放比例)
+     * @param factor 变换因子(0f ~ 1f)
+     */
+    fun transformLayerByResize(clipRect: RectF, destScale: Float, factor: Float) {
         // 计算变换大小
         val diffWidth = resizeSize.width * destScale - tempSize.width
         val diffHeight = resizeSize.height * destScale - tempSize.height
@@ -92,7 +135,11 @@ abstract class AbsLayerView @JvmOverloads constructor(
         layoutInfo.centerYRatio = (tcy - clipRect.top) / clipRect.height()
     }
 
-    override fun onUpdateLayout(clipRect: RectF) {
+    /**
+     * 根据布局信息更新子控件的布局位置
+     * @param clipRect 父控件画布区域
+     */
+    fun onUpdateLayout(clipRect: RectF) {
         // 根据缩放比例重新计算控件的宽高
         val newWidth = clipRect.width() * layoutInfo.widthRatio
         val newHeight = clipRect.height() * layoutInfo.heightRatio
@@ -109,9 +156,12 @@ abstract class AbsLayerView @JvmOverloads constructor(
         translationY = 0f
     }
 
-    override fun invalidateView() = invalidate()
-
-    override fun stagingLayerTempCacheInfo(focusX: Float, focusY: Float) {
+    /**
+     * 子控件在触摸时先缓存当前的缩放、旋转信息，方便在移动时进行缩放、旋转操作。缩放旋转时的初始值会使用当前缓存的数值。
+     * @param focusX 双指触摸时中心点x轴坐标
+     * @param focusY 双指触摸时中心点y轴坐标
+     */
+    fun stagingLayerTempCacheInfo(focusX: Float, focusY: Float) {
         // StackOverflow: https://stackoverflow.com/questions/14415035/setpivotx-works-strange-on-scaled-view
         // 在进行缩放、旋转操作时，先将缩放锚点设置到双指中心点
         val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
@@ -125,26 +175,41 @@ abstract class AbsLayerView @JvmOverloads constructor(
         )
     }
 
-    override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, tx: Float, ty: Float, focusX: Float, focusY: Float) {
+    /**
+     * 子控件在触摸移动时进行缩放/旋转/平移操作。
+     * @param scaleFactor 缩放因子
+     * @param deltaAngle 旋转角度
+     * @param tx x轴偏移量
+     * @param ty y轴偏移量
+     * @param focusX 双指触摸时中心点x轴坐标
+     * @param focusY 双指触摸时中心点y轴坐标
+     */
+    open fun onLayerTranslation(scaleFactor: Float, deltaAngle: Float, tx: Float, ty: Float, focusX: Float, focusY: Float) {
         scaleX = scaleFactor * layerCacheInfo.scaleX
         scaleY = scaleFactor * layerCacheInfo.scaleY
         rotation = deltaAngle + layerCacheInfo.rotation
         translationX = tx + layerCacheInfo.translationX
         translationY = ty + layerCacheInfo.translationY
-        Log.w("sqsong", "onScaleRotate: scaleX: $scaleX, scaleY: $scaleY, rotation: $rotation")
-        // 重绘(边框)
-        invalidate()
+        invalidate() // 需要重绘边框
     }
 
-    override fun changeSaveState(isSave: Boolean) {
+    /**
+     * 在保存操作时，需要修改子控件中的绘制方法，防止不必要的信息绘制到最终结果图。
+     * @param isSave 是否保存状态
+     */
+    fun changeSaveState(isSave: Boolean) {
         isSaveMode = isSave
     }
 
-    override fun resetLayerPivot() {
-        resetViewPivotTo(width / 2f, height / 2f, tempMatrix)
-    }
+    /**
+     * 重置子控件的缩放、旋转锚点(为自身中心点)
+     */
+    fun resetLayerPivot() = resetViewPivotTo(width / 2f, height / 2f, tempMatrix)
 
-    override fun startTouchAnim() {
+    /**
+     * 点击到控件时进行的缩放动画
+     */
+    fun startTouchAnim() {
         // 图层选中时的缩放动画，宽度最多放大25dp，高度按比例计算。这样能保证无论图层放大多少，缩放在视觉上保持一致。
         // 否则可能出现图层放大也大，缩放的幅度也会越大
         val currentWidth = width * scaleX
@@ -166,8 +231,5 @@ abstract class AbsLayerView @JvmOverloads constructor(
             start()
         }
     }
-
-    override fun detectCenterCoordinateAndRotation(): Boolean = true
-
 
 }

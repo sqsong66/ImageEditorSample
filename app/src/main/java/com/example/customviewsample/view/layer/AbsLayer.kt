@@ -1,11 +1,11 @@
 package com.example.customviewsample.view.layer
 
-import android.graphics.PointF
 import android.graphics.RectF
 import android.widget.ImageView
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.LayerType
 
+@Deprecated("Use AbsLayerView instead")
 interface AbsLayer {
 
     var isSelectedLayer: Boolean
