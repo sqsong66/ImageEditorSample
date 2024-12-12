@@ -25,7 +25,6 @@ import com.example.customviewsample.common.helper.VibratorHelper
 import com.example.customviewsample.data.CanvasSize
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.view.AlphaGridDrawHelper
-import com.example.customviewsample.view.layer.anno.AbsLayer
 import com.example.customviewsample.view.layer.anno.GestureMode
 
 private const val MIN_MOVE_DISTANCE = 10f

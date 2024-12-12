@@ -2,41 +2,24 @@ package com.example.customviewsample.view.layer
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Matrix
-import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
-import android.graphics.drawable.BitmapDrawable
 import android.util.AttributeSet
 import android.util.Log
 import android.util.Size
-import android.view.ViewGroup
-import android.view.ViewGroup.LayoutParams
+import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
-import androidx.appcompat.widget.AppCompatImageView
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.LayerType
 
-class ImageLayerView @JvmOverloads constructor(
+abstract class AbsLayerView @JvmOverloads constructor(
     context: Context,
-    private val cornerRadius: Float = 0f,
-    override var isSelectedLayer: Boolean = false,
-    override val absLayerType: Int = LayerType.LAYER_IMAGE,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
-) : AppCompatImageView(context, attrs, defStyleAttr), AbsLayer {
+) : View(context, attrs, defStyleAttr), AbsLayer {
 
-    companion object {
-        const val SCALE_FACTOR = 0.8f
-    }
-
-    private val path = Path()
-    private val pathRect = RectF()
     private var isSaveMode = false
     private val resizeRect = RectF()
     private val tempMatrix = Matrix()
@@ -45,32 +28,15 @@ class ImageLayerView @JvmOverloads constructor(
     private var tempCenterPoint = PointF()
     private var tempSize = Size(0, 0)
     private var resizeSize = Size(0, 0)
-    private val borderWidth = dp2Px<Float>(2)
     private var layerCacheInfo = LayerTempCacheInfo()
 
-    private val paint by lazy {
-        Paint().apply {
-            color = Color.RED
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-            strokeWidth = borderWidth
-        }
-    }
+    override val absLayoutInfo: LayoutInfo = layoutInfo
 
-    private val testPaint by lazy {
-        Paint().apply {
-            color = Color.GREEN
-            style = Paint.Style.FILL
-        }
-    }
-
-    override val absLayoutInfo: LayoutInfo
-        get() = layoutInfo
+    override val absLayerType: Int
+        get() = LayerType.LAYER_IMAGE
 
     override fun translateLayer(dx: Float, dy: Float, pcx: Float, pcy: Float): Int {
         translate(dx, dy)
-
         return CoordinateLocation.COORDINATE_NONE
     }
 
@@ -145,28 +111,6 @@ class ImageLayerView @JvmOverloads constructor(
 
     override fun invalidateView() = invalidate()
 
-    override fun isTouchedInLayer(x: Float, y: Float): Boolean {
-        // 首先判断触摸点是否在图片范围内，需要将父布局中的坐标转换为图片控件的本地坐标
-        val localPoint = mapCoordinateToLocal(this, x, y)
-        if (localPoint[0] < 0 || localPoint[0] > width || localPoint[1] < 0 || localPoint[1] > height) {
-            return false
-        }
-
-        // 将坐标映射到图片Bitmap上，如果透明度不为0，则认为是在图片上，否则认为是在图片外
-        val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return false
-        val scale = minOf(width.toFloat() / bitmap.width, height.toFloat() / bitmap.height)
-        val dx = (width - bitmap.width * scale) / 2
-        val dy = (height - bitmap.height * scale) / 2
-        val bitmapPoint = floatArrayOf((localPoint[0] - dx) / scale, (localPoint[1] - dy) / scale)
-        val bitmapX = bitmapPoint[0].toInt()
-        val bitmapY = bitmapPoint[1].toInt()
-        if (bitmapX < 0 || bitmapX >= bitmap.width || bitmapY < 0 || bitmapY >= bitmap.height) {
-            return false
-        }
-        val pixel = bitmap.getPixel(bitmapX, bitmapY)
-        return (pixel shr 24 and 0xff) != 0
-    }
-
     override fun stagingLayerTempCacheInfo(focusX: Float, focusY: Float) {
         // StackOverflow: https://stackoverflow.com/questions/14415035/setpivotx-works-strange-on-scaled-view
         // 在进行缩放、旋转操作时，先将缩放锚点设置到双指中心点
@@ -225,69 +169,5 @@ class ImageLayerView @JvmOverloads constructor(
 
     override fun detectCenterCoordinateAndRotation(): Boolean = true
 
-    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        super.onLayout(changed, left, top, right, bottom)
-        // 当控件的尺寸发生变化时，重置缩放锚点(为中心点)
-        resetLayerPivot()
-    }
 
-    override fun onDraw(canvas: Canvas) {
-        if (isSelectedLayer && !isSaveMode) {
-            drawSelectedLayer(canvas) {
-                super.onDraw(canvas)
-            }
-        } else {
-            super.onDraw(canvas)
-        }
-    }
-
-    private inline fun drawSelectedLayer(canvas: Canvas, superDraw: () -> Unit) {
-        val intrinsicWidth = drawable?.intrinsicWidth ?: 0
-        val intrinsicHeight = drawable?.intrinsicHeight ?: 0
-        if (intrinsicWidth <= 0 || intrinsicHeight <= 0) {
-            superDraw()
-            return
-        }
-        // 使用图片矩阵来计算clip区域，这样可以让边框完全贴合图片；如果直接使用控件的宽高来计算，可能会出现边框与图片之间有间隙
-        pathRect.set(0f, 0f, intrinsicWidth.toFloat(), intrinsicHeight.toFloat())
-        imageMatrix.mapRect(pathRect)
-        path.reset()
-        val radius = cornerRadius / scaleX
-        path.addRoundRect(pathRect, radius, radius, Path.Direction.CW)
-        canvas.save()
-        canvas.clipPath(path)
-        superDraw()
-        canvas.restore()
-
-        paint.strokeWidth = borderWidth / scaleX
-        canvas.drawPath(path, paint)
-    }
-
-    fun onInitialLayout(parentView: ViewGroup, bitmap: Bitmap, clipRect: RectF) {
-        setImageBitmap(bitmap)
-        // 根据图片最长边相对控件最短边的[SCALE_FACTOR]倍数进行中心缩放展示
-        var imageWidth = clipRect.width() * SCALE_FACTOR
-        var imageHeight = imageWidth * bitmap.height / bitmap.width
-        if (imageHeight > clipRect.height() * SCALE_FACTOR) {
-            imageHeight = clipRect.height() * SCALE_FACTOR
-            imageWidth = imageHeight * bitmap.width / bitmap.height
-        }
-        Log.w("sqsong", "onInitialLayout: bitmap size: ${bitmap.width}x${bitmap.height}, image size: $imageWidth x $imageHeight")
-        val layoutParams = LayoutParams(imageWidth.toInt(), imageHeight.toInt())
-        // 添加控件到父布局中
-        parentView.addView(this, layoutParams)
-        // 设置初始偏移量(实验性，这里将图片放到父控件画布的右下角)
-        val tx = (clipRect.width() - imageWidth) / 2
-        val ty = (clipRect.height() - imageHeight) / 2
-
-        val cx = clipRect.centerX() + tx
-        val cy = clipRect.centerY() + ty
-        val left = (cx - imageWidth / 2f).toInt()
-        val top = (cy - imageHeight / 2f).toInt()
-        val right = (cx + imageWidth / 2f).toInt()
-        val bottom = (cy + imageHeight / 2f).toInt()
-        // 计算控件的摆放位置
-        layout(left, top, right, bottom)
-        stagingResizeInfo(clipRect, true)
-    }
 }
