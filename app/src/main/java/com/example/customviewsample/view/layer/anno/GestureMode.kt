@@ -1,4 +1,4 @@
-package com.example.customviewsample.view.layer
+package com.example.customviewsample.view.layer.anno
 
 annotation class GestureMode {
 

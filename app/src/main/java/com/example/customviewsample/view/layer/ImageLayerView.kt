@@ -19,6 +19,9 @@ import android.view.ViewGroup.LayoutParams
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.appcompat.widget.AppCompatImageView
 import com.example.customviewsample.utils.dp2Px
+import com.example.customviewsample.view.layer.anno.AbsLayer
+import com.example.customviewsample.view.layer.anno.CoordinateLocation
+import com.example.customviewsample.view.layer.anno.LayerType
 
 class ImageLayerView @JvmOverloads constructor(
     context: Context,
@@ -41,10 +44,11 @@ class ImageLayerView @JvmOverloads constructor(
     private val centerPoint = PointF()
     private val layoutInfo = LayoutInfo()
     private var tempCenterPoint = PointF()
-    private val borderWidth = dp2Px<Float>(2)
     private var tempSize = Size(0, 0)
     private var resizeSize = Size(0, 0)
+    private val borderWidth = dp2Px<Float>(2)
     private var layerCacheInfo = LayerTempCacheInfo()
+    private val layerCenterArray = FloatArray(2)
 
     private val paint by lazy {
         Paint().apply {
@@ -69,9 +73,16 @@ class ImageLayerView @JvmOverloads constructor(
     override val absLayoutInfo: LayoutInfo
         get() = layoutInfo
 
-    override fun translate(dx: Float, dy: Float) {
+    override fun translateLayer(dx: Float, dy: Float, pcx: Float, pcy: Float): Int {
+        translate(dx, dy)
+
+        return CoordinateLocation.COORDINATE_NONE
+    }
+
+    private fun translate(dx: Float, dy: Float) {
         translationX += dx
         translationY += dy
+        invalidate()
     }
 
     override fun updateLayoutInfo(clipRect: RectF) {
@@ -172,14 +183,18 @@ class ImageLayerView @JvmOverloads constructor(
             scaleX = scaleX,
             scaleY = scaleY,
             rotation = rotation,
+            translationX = translationX,
+            translationY = translationY
         )
     }
 
 
-    override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float) {
+    override fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, tx: Float, ty: Float, focusX: Float, focusY: Float) {
         scaleX = scaleFactor * layerCacheInfo.scaleX
         scaleY = scaleFactor * layerCacheInfo.scaleY
         rotation = deltaAngle + layerCacheInfo.rotation
+        translationX = tx + layerCacheInfo.translationX
+        translationY = ty + layerCacheInfo.translationY
         Log.w("sqsong", "onScaleRotate: scaleX: $scaleX, scaleY: $scaleY, rotation: $rotation")
         // 重绘(边框)
         invalidate()
@@ -229,6 +244,7 @@ class ImageLayerView @JvmOverloads constructor(
             drawSelectedLayer(canvas) {
                 super.onDraw(canvas)
             }
+            canvas.drawCircle(layerCenterArray[0], layerCenterArray[1], 10f, testPaint)
         } else {
             super.onDraw(canvas)
         }

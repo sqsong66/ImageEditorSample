@@ -17,7 +17,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
-import androidx.core.animation.doOnStart
 import androidx.core.content.ContextCompat
 import androidx.core.view.children
 import com.example.customviewsample.R
@@ -26,6 +25,8 @@ import com.example.customviewsample.common.helper.VibratorHelper
 import com.example.customviewsample.data.CanvasSize
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.view.AlphaGridDrawHelper
+import com.example.customviewsample.view.layer.anno.AbsLayer
+import com.example.customviewsample.view.layer.anno.GestureMode
 
 private const val MIN_MOVE_DISTANCE = 10f
 private const val MAX_CLICK_DURATION = 400L
@@ -58,10 +59,13 @@ class ImageEditorView @JvmOverloads constructor(
     private var fingerDistance = 0f
 
     // 双指时两指之间的中心点
-    private val fingerCenterPoint = PointF()
+    private val touchDownFingerCenter = PointF()
 
     // 双指按下时的角度
     private var fingerDownAngle = 0f
+
+    // 双指移动时中心点
+    private val moveFingerCenter = PointF()
 
     private val vibratorHelper by lazy { VibratorHelper(context) }
     var canvasSize = CanvasSize(width = 1512, height = 1512, iconRes = R.drawable.ic_picture, title = "Square", isTint = true)
@@ -252,9 +256,9 @@ class ImageEditorView @JvmOverloads constructor(
         if (event.pointerCount != 2) return
         gestureMode = GestureMode.GESTURE_SCALE_ROTATE
         fingerDistance = calculateDistance(event)
-        calculateCenterPoint(fingerCenterPoint, event)
+        calculateCenterPoint(touchDownFingerCenter, event)
         fingerDownAngle = calculateRotation(event)
-        currentLayerView?.stagingLayerTempCacheInfo(fingerCenterPoint.x, fingerCenterPoint.y)
+        currentLayerView?.stagingLayerTempCacheInfo(touchDownFingerCenter.x, touchDownFingerCenter.y)
     }
 
     private fun onMove(event: MotionEvent) {
@@ -279,21 +283,26 @@ class ImageEditorView @JvmOverloads constructor(
             GestureMode.GESTURE_DRAG -> {
                 val dx = event.x - lastX
                 val dy = event.y - lastY
-                absLayer.translate(dx, dy)
+                absLayer.translateLayer(dx, dy, clipRect.centerX(), clipRect.centerY())
             }
 
-            GestureMode.GESTURE_SCALE_ROTATE -> scaleRotateLayer(absLayer, event)
+            GestureMode.GESTURE_SCALE_ROTATE -> {
+                scaleRotateLayer(absLayer, event)
+            }
         }
     }
 
     private fun scaleRotateLayer(absLayer: AbsLayer, event: MotionEvent) {
         if (event.pointerCount != 2) return
         val newDistance = calculateDistance(event)
+        calculateCenterPoint(moveFingerCenter, event)
         if (newDistance > MIN_MOVE_DISTANCE) {
             val scale = newDistance / fingerDistance
             val angle = calculateRotation(event)
             val deltaAngle = angle - fingerDownAngle
-            absLayer.onScaleRotate(scale, deltaAngle, fingerCenterPoint.x, fingerCenterPoint.y)
+            val tx = moveFingerCenter.x - touchDownFingerCenter.x
+            val ty = moveFingerCenter.y - touchDownFingerCenter.y
+            absLayer.onScaleRotate(scale, deltaAngle, tx, ty, moveFingerCenter.x, moveFingerCenter.y)
         }
     }
 

@@ -1,8 +1,9 @@
-package com.example.customviewsample.view.layer
+package com.example.customviewsample.view.layer.anno
 
 import android.graphics.PointF
 import android.graphics.RectF
 import android.widget.ImageView
+import com.example.customviewsample.view.layer.LayoutInfo
 
 interface AbsLayer {
 
@@ -15,7 +16,16 @@ interface AbsLayer {
     @LayerType
     val absLayerType: Int
 
-    fun translate(dx: Float, dy: Float)
+    /**
+     * 子控件进行平移操作
+     * @param dx x轴偏移量
+     * @param dy y轴偏移量
+     * @param pcx 父控件中心点x轴坐标
+     * @param pcy 父控件中心点y轴坐标
+     * @return 判断子控件坐标与父控件坐标的关系(是否重合)
+     */
+    @CoordinateLocation
+    fun translateLayer(dx: Float, dy: Float, pcx: Float, pcy: Float): Int
 
     /**
      * 更新子View的布局信息
@@ -72,7 +82,7 @@ interface AbsLayer {
      * @param scaleFactor 缩放因子
      * @param deltaAngle 旋转角度
      */
-    fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, focusX: Float, focusY: Float)
+    fun onScaleRotate(scaleFactor: Float, deltaAngle: Float, tx: Float, ty: Float, focusX: Float, focusY: Float)
 
     /**
      * 在保存操作时，需要修改子控件中的绘制方法，防止不必要的信息绘制到最终结果图。
