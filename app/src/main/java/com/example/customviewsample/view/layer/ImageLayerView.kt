@@ -114,8 +114,8 @@ class ImageLayerView @JvmOverloads constructor(
         // 添加控件到父布局中
         parentView.addView(this, layoutParams)
         // 设置初始偏移量(实验性，这里将图片放到父控件画布的右下角)
-        val tx = (clipRect.width() - imageWidth) / 2
-        val ty = (clipRect.height() - imageHeight) / 2
+        val tx = 0f // (clipRect.width() - imageWidth) / 2
+        val ty = 0f // (clipRect.height() - imageHeight) / 2
 
         val cx = clipRect.centerX() + tx
         val cy = clipRect.centerY() + ty
@@ -123,7 +123,7 @@ class ImageLayerView @JvmOverloads constructor(
         val top = (cy - imageHeight / 2f).toInt()
         val right = (cx + imageWidth / 2f).toInt()
         val bottom = (cy + imageHeight / 2f).toInt()
-        // 计算控件的摆放位置
+        // 初始化计算控件的摆放位置
         layout(left, top, right, bottom)
         stagingResizeInfo(clipRect, true)
     }

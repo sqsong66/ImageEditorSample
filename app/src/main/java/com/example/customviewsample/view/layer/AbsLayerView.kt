@@ -25,16 +25,20 @@ abstract class AbsLayerView @JvmOverloads constructor(
     protected val pathRect = RectF()
     protected var isSaveMode = false
     protected val borderPath = Path()
-    protected val borderWidth = dp2Px<Float>(2)
     protected val cornerRadius = dp2Px<Float>(6)
+    protected val borderWidth = dp2Px<Float>(1.5f)
 
     private val resizeRect = RectF()
     private val tempMatrix = Matrix()
     private val centerPoint = PointF()
     private val layoutInfo = LayoutInfo()
+    // 临时保存的中心点，在进行尺寸变换动画前临时存储，在动画过程中中心点的计算基于该中心点
     private var tempCenterPoint = PointF()
+    // 临时保存的尺寸大小，在进行尺寸变换动画前临时存储，在动画过程中尺寸的计算基于改尺寸
     private var tempSize = Size(0, 0)
+    // 父控件尺寸发生变化时或触摸过后记录子控件的尺寸，在进行尺寸切换时进行动画过渡使用
     private var resizeSize = Size(0, 0)
+    // 缓存子控件的缩放、旋转信息，方便在移动时进行各种变换操作，变换操作基于缓存的数值
     private var layerCacheInfo = LayerTempCacheInfo()
 
     @LayerType

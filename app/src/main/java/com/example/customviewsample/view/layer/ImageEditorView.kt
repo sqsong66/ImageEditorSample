@@ -26,6 +26,10 @@ import com.example.customviewsample.data.CanvasSize
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.view.AlphaGridDrawHelper
 import com.example.customviewsample.view.layer.anno.GestureMode
+import com.example.customviewsample.view.layer.manager.UndoRedoManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 
 const val SCALE_FACTOR = 0.8f
 private const val MIN_MOVE_DISTANCE = 10f
@@ -35,7 +39,7 @@ class ImageEditorView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : ViewGroup(context, attrs, defStyleAttr) {
+) : ViewGroup(context, attrs, defStyleAttr), CoroutineScope by MainScope() {
 
     private var lastX = 0f
     private var lastY = 0f
@@ -66,6 +70,8 @@ class ImageEditorView @JvmOverloads constructor(
 
     // 双指移动时中心点
     private val moveFingerCenter = PointF()
+
+    private val undoRedoManager by lazy { UndoRedoManager() }
 
     private val vibratorHelper by lazy { VibratorHelper(context) }
     var canvasSize = CanvasSize(width = 1512, height = 1512, iconRes = R.drawable.ic_picture, title = "Square", isTint = true)
@@ -227,6 +233,10 @@ class ImageEditorView @JvmOverloads constructor(
         currentLayerView = null
     }
 
+    private fun saveLayerSnapshot() {
+
+    }
+
     /******************** 触摸事件 ********************/
     // 拦截所有子控件的触摸事件，交由当前父控件来统一处理
     override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean = true
@@ -339,20 +349,6 @@ class ImageEditorView @JvmOverloads constructor(
         return null
     }
 
-    // 无动画效果切换尺寸
-    /*fun updateCanvasSize(canvasSize: CanvasSize) {
-        this.canvasSize = canvasSize
-        val currentRect = RectF(clipRect)
-        val newRect = calculateClipRect(width, height)
-        if (currentRect.isSameRect(newRect)) return
-        clipRect.set(newRect)
-        val destScale = getNewScale(clipRect)
-        children.forEach { child ->
-            (child as AbsLayer).transformLayerByResize(clipRect, destScale, 1f)
-        }
-        requestLayout()
-    }*/
-
     fun getEditorBitmap(): Bitmap {
         val bitmap = Bitmap.createBitmap(canvasSize.width, canvasSize.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -377,4 +373,24 @@ class ImageEditorView @JvmOverloads constructor(
         canvas.restore()
         return bitmap
     }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        // 取消所有协程，防止内存泄漏
+        cancel()
+    }
+
+    // 无动画效果切换尺寸
+    /*fun updateCanvasSize(canvasSize: CanvasSize) {
+        this.canvasSize = canvasSize
+        val currentRect = RectF(clipRect)
+        val newRect = calculateClipRect(width, height)
+        if (currentRect.isSameRect(newRect)) return
+        clipRect.set(newRect)
+        val destScale = getNewScale(clipRect)
+        children.forEach { child ->
+            (child as AbsLayer).transformLayerByResize(clipRect, destScale, 1f)
+        }
+        requestLayout()
+    }*/
 }
