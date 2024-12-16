@@ -3,6 +3,7 @@ package com.example.customviewsample.view.layer
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Matrix
+import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
@@ -12,34 +13,54 @@ import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import com.example.customviewsample.utils.dp2Px
+import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.LayerType
+import kotlin.math.abs
 
 abstract class AbsLayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
+    protected val cornerRadius: Float = dp2Px(6f),
+    protected val borderWidth: Float = dp2Px(1.5f),
+    protected val borderColor: Int = getThemeColor(context, com.google.android.material.R.attr.colorPrimary),
 ) : View(context, attrs, defStyleAttr) {
 
     var isSelectedLayer = false
     protected val pathRect = RectF()
     protected var isSaveMode = false
     protected val borderPath = Path()
-    protected val cornerRadius = dp2Px<Float>(6)
-    protected val borderWidth = dp2Px<Float>(1.5f)
 
     private val resizeRect = RectF()
     private val tempMatrix = Matrix()
     private val centerPoint = PointF()
     private val layoutInfo = LayoutInfo()
+
     // 临时保存的中心点，在进行尺寸变换动画前临时存储，在动画过程中中心点的计算基于该中心点
     private var tempCenterPoint = PointF()
+
     // 临时保存的尺寸大小，在进行尺寸变换动画前临时存储，在动画过程中尺寸的计算基于改尺寸
     private var tempSize = Size(0, 0)
+
     // 父控件尺寸发生变化时或触摸过后记录子控件的尺寸，在进行尺寸切换时进行动画过渡使用
     private var resizeSize = Size(0, 0)
+
     // 缓存子控件的缩放、旋转信息，方便在移动时进行各种变换操作，变换操作基于缓存的数值
     private var layerCacheInfo = LayerTempCacheInfo()
+
+    @CoordinateLocation
+    private var coordinateLoc: Int = CoordinateLocation.COORDINATE_NONE
+
+    protected val borderPaint by lazy {
+        Paint().apply {
+            color = borderColor
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            strokeWidth = borderWidth
+        }
+    }
 
     @LayerType
     abstract fun getViewLayerType(): Int
@@ -63,9 +84,57 @@ abstract class AbsLayerView @JvmOverloads constructor(
      * @return 判断子控件坐标与父控件坐标的关系(是否重合)
      */
     @CoordinateLocation
-    fun translateLayer(dx: Float, dy: Float, pcx: Float, pcy: Float): Int {
-        translate(dx, dy)
-        return CoordinateLocation.COORDINATE_NONE
+    fun translateLayer(dx: Float, dy: Float, pcx: Float, pcy: Float, onVibrate: () -> Unit): Int {
+        if (detectCenterCoordinateAndRotation()) {
+            val preCoordinateLoc = coordinateLoc
+            coordinateLoc = detectCoordinateLoc(pcx, pcy)
+            var tx = dx
+            var ty = dy
+            val cx = (left + right) / 2f + translationX
+            val cy = (top + bottom) / 2f + translationY
+            when (coordinateLoc) {
+                CoordinateLocation.COORDINATE_CENTER -> {
+                    if (abs(dx) < COORDINATE_MOVE_THRESHOLD) tx = pcx - cx
+                    if (abs(dy) < COORDINATE_MOVE_THRESHOLD) ty = pcy - cy
+                    if (preCoordinateLoc != coordinateLoc) onVibrate()
+                }
+
+                CoordinateLocation.COORDINATE_CENTER_X -> {
+                    if (abs(dx) < COORDINATE_MOVE_THRESHOLD) tx = pcx - cx
+                    if (preCoordinateLoc != coordinateLoc && preCoordinateLoc != CoordinateLocation.COORDINATE_CENTER) onVibrate()
+                }
+
+                CoordinateLocation.COORDINATE_CENTER_Y -> {
+                    if (abs(dy) < COORDINATE_MOVE_THRESHOLD) ty = pcy - cy
+                    if (preCoordinateLoc != coordinateLoc && preCoordinateLoc != CoordinateLocation.COORDINATE_CENTER) onVibrate()
+                }
+            }
+            translate(tx, ty)
+        } else {
+            translate(dx, dy)
+        }
+        return coordinateLoc
+    }
+
+    /**
+     * 检测图层中心点是否与父容器中心点重合
+     * @param px 父容器中心点x坐标
+     * @param py 父容器中心点y坐标
+     * @return [CoordinateLocation]
+     */
+    @CoordinateLocation
+    private fun detectCoordinateLoc(px: Float, py: Float): Int {
+        // cx/cy：子控件相对于父控件的中心点坐标
+        val cx = (left + right) / 2f + translationX
+        val cy = (top + bottom) / 2f + translationY
+        val inCenterX = abs(px - cx) <= COORDINATE_DETECT_OFFSET
+        val inCenterY = abs(py - cy) <= COORDINATE_DETECT_OFFSET
+        return when {
+            inCenterX && inCenterY -> CoordinateLocation.COORDINATE_CENTER
+            inCenterX -> CoordinateLocation.COORDINATE_CENTER_X
+            inCenterY -> CoordinateLocation.COORDINATE_CENTER_Y
+            else -> CoordinateLocation.COORDINATE_NONE
+        }
     }
 
     private fun translate(dx: Float, dy: Float) {
@@ -185,15 +254,15 @@ abstract class AbsLayerView @JvmOverloads constructor(
      * @param deltaAngle 旋转角度
      * @param tx x轴偏移量
      * @param ty y轴偏移量
-     * @param focusX 双指触摸时中心点x轴坐标
-     * @param focusY 双指触摸时中心点y轴坐标
      */
-    open fun onLayerTranslation(scaleFactor: Float, deltaAngle: Float, tx: Float, ty: Float, focusX: Float, focusY: Float) {
+    open fun onLayerTranslation(scaleFactor: Float, deltaAngle: Float, tx: Float, ty: Float, pcx: Float, pcy: Float, onVibrate: () -> Unit) {
         scaleX = scaleFactor * layerCacheInfo.scaleX
         scaleY = scaleFactor * layerCacheInfo.scaleY
         rotation = deltaAngle + layerCacheInfo.rotation
         translationX = tx + layerCacheInfo.translationX
         translationY = ty + layerCacheInfo.translationY
+        val preCoordinateLoc = coordinateLoc
+        coordinateLoc = detectCoordinateLoc(pcx, pcy)
         invalidate() // 需要重绘边框
     }
 

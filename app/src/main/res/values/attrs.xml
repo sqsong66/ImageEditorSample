@@ -3,5 +3,7 @@
 
     <declare-styleable name="ImageEditorView">
         <attr name="iev_cornerRadius" format="dimension" />
+        <attr name="iev_borderWidth" format="dimension" />
+        <attr name="iev_borderColor" format="color" />
     </declare-styleable>
 </resources>

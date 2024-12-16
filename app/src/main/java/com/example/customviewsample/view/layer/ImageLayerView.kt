@@ -12,7 +12,6 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
-import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.view.layer.anno.LayerType
 
 class ImageLayerView @JvmOverloads constructor(
@@ -28,16 +27,6 @@ class ImageLayerView @JvmOverloads constructor(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             isDither = true
             isFilterBitmap = true
-        }
-    }
-
-    private val paint by lazy {
-        Paint().apply {
-            color = Color.RED
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-            strokeWidth = dp2Px(2)
         }
     }
 
@@ -92,8 +81,9 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        super.onLayout(changed, left, top, right, bottom)
+        resetLayerPivot()
         updateImageMatrix()
+        super.onLayout(changed, left, top, right, bottom)
     }
 
     fun onInitialLayout(parentView: ViewGroup, bitmap: Bitmap, clipRect: RectF) {
@@ -145,8 +135,8 @@ class ImageLayerView @JvmOverloads constructor(
             canvas.drawBitmap(bitmap, imageMatrix, imagePaint)
             canvas.restore()
 
-            paint.strokeWidth = borderWidth / scaleX
-            canvas.drawPath(borderPath, paint)
+            borderPaint.strokeWidth = borderWidth / scaleX
+            canvas.drawPath(borderPath, borderPaint)
         } else {
             canvas.drawBitmap(bitmap, imageMatrix, imagePaint)
         }

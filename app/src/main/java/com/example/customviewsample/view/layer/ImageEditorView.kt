@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
@@ -24,7 +23,9 @@ import com.example.customviewsample.common.ext.isSameRect
 import com.example.customviewsample.common.helper.VibratorHelper
 import com.example.customviewsample.data.CanvasSize
 import com.example.customviewsample.utils.dp2Px
+import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.AlphaGridDrawHelper
+import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.GestureMode
 import com.example.customviewsample.view.layer.manager.UndoRedoManager
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +33,8 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 
 const val SCALE_FACTOR = 0.8f
+const val COORDINATE_DETECT_OFFSET = 5f
+const val COORDINATE_MOVE_THRESHOLD = 6f
 private const val MIN_MOVE_DISTANCE = 10f
 private const val MAX_CLICK_DURATION = 400L
 
@@ -43,6 +46,8 @@ class ImageEditorView @JvmOverloads constructor(
 
     private var lastX = 0f
     private var lastY = 0f
+    private var borderWidth = 0f
+    private var borderColor = 0
     private var cornerRadius = 0f
     private val clipPath = Path()
     private val clipRect = RectF()
@@ -73,15 +78,20 @@ class ImageEditorView @JvmOverloads constructor(
 
     private val undoRedoManager by lazy { UndoRedoManager() }
 
+    @CoordinateLocation
+    private var coordinateLoc: Int = CoordinateLocation.COORDINATE_NONE
+
     private val vibratorHelper by lazy { VibratorHelper(context) }
     var canvasSize = CanvasSize(width = 1512, height = 1512, iconRes = R.drawable.ic_picture, title = "Square", isTint = true)
         private set
 
-    private val testPaint by lazy {
+    protected val borderPaint by lazy {
         Paint().apply {
-            color = Color.GREEN
+            color = borderColor
             style = Paint.Style.STROKE
-            strokeWidth = 5f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            strokeWidth = borderWidth
         }
     }
 
@@ -102,6 +112,8 @@ class ImageEditorView @JvmOverloads constructor(
     private fun handleAttributes(context: Context, attrs: AttributeSet?) {
         context.obtainStyledAttributes(attrs, R.styleable.ImageEditorView).apply {
             cornerRadius = getDimension(R.styleable.ImageEditorView_iev_cornerRadius, dp2Px(8))
+            borderWidth = getDimension(R.styleable.ImageEditorView_iev_borderWidth, dp2Px(1.5f))
+            borderColor = getColor(R.styleable.ImageEditorView_iev_borderColor, getThemeColor(context, com.google.android.material.R.attr.colorPrimary))
             recycle()
         }
     }
@@ -118,6 +130,25 @@ class ImageEditorView @JvmOverloads constructor(
             alphaGridDrawHelper.drawAlphaGrid(canvas, clipRect)
             super.dispatchDraw(canvas)
             canvas.restore()
+            drawCoordinateAuxiliaryLine(canvas)
+        }
+    }
+
+    private fun drawCoordinateAuxiliaryLine(canvas: Canvas) {
+        if (coordinateLoc == CoordinateLocation.COORDINATE_NONE) return
+        when (coordinateLoc) {
+            CoordinateLocation.COORDINATE_CENTER -> {
+                canvas.drawLine(clipRect.centerX(), clipRect.top, clipRect.centerX(), clipRect.bottom, borderPaint)
+                canvas.drawLine(clipRect.left, clipRect.centerY(), clipRect.right, clipRect.centerY(), borderPaint)
+            }
+
+            CoordinateLocation.COORDINATE_CENTER_X -> {
+                canvas.drawLine(clipRect.left, clipRect.centerY(), clipRect.right, clipRect.centerY(), borderPaint)
+            }
+
+            CoordinateLocation.COORDINATE_CENTER_Y -> {
+                canvas.drawLine(clipRect.centerX(), clipRect.top, clipRect.centerX(), clipRect.bottom, borderPaint)
+            }
         }
     }
 
@@ -292,6 +323,7 @@ class ImageEditorView @JvmOverloads constructor(
         }
         stagingChildResizeInfo(updateLayoutInfo = true)
         currentLayerView?.resetLayerPivot()
+        coordinateLoc = CoordinateLocation.COORDINATE_NONE
     }
 
     private fun processMoveEvent(absLayer: AbsLayerView, event: MotionEvent) {
@@ -299,7 +331,10 @@ class ImageEditorView @JvmOverloads constructor(
             GestureMode.GESTURE_DRAG -> {
                 val dx = event.x - lastX
                 val dy = event.y - lastY
-                absLayer.translateLayer(dx, dy, clipRect.centerX(), clipRect.centerY())
+                coordinateLoc = absLayer.translateLayer(dx, dy, clipRect.centerX(), clipRect.centerY()) {
+                    vibratorHelper.vibrate()
+                }
+                invalidate()
             }
 
             GestureMode.GESTURE_SCALE_ROTATE -> {
@@ -318,7 +353,9 @@ class ImageEditorView @JvmOverloads constructor(
             val deltaAngle = angle - fingerDownAngle
             val tx = moveFingerCenter.x - touchDownFingerCenter.x
             val ty = moveFingerCenter.y - touchDownFingerCenter.y
-            absLayer.onLayerTranslation(scale, deltaAngle, tx, ty, moveFingerCenter.x, moveFingerCenter.y)
+            absLayer.onLayerTranslation(scale, deltaAngle, tx, ty, clipRect.centerX(), clipRect.centerY()) {
+                vibratorHelper.vibrate()
+            }
         }
     }
 
