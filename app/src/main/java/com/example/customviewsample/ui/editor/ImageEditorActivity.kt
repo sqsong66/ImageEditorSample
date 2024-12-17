@@ -16,12 +16,15 @@ import com.example.customviewsample.R
 import com.example.customviewsample.base.BaseActivity
 import com.example.customviewsample.common.behavior.EditMenuBottomSheetBehavior
 import com.example.customviewsample.common.ext.setMaterialShapeBackgroundDrawable
+import com.example.customviewsample.data.GradientData
 import com.example.customviewsample.databinding.ActivityImageEditorBinding
 import com.example.customviewsample.ui.editor.adapter.EditorMainMenuAdapter
 import com.example.customviewsample.ui.editor.menus.CanvasSizeMenuLayout
 import com.example.customviewsample.utils.decodeBitmapByGlide
 import com.example.customviewsample.utils.dp2Px
 import com.google.android.material.shape.CornerFamily
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
@@ -30,9 +33,11 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.random.Random
 
 class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityImageEditorBinding::inflate) {
 
+    private var addImageType = 0 // 0-添加图片 1-添加背景
     private var bottomInsets = 0
     private var backgroundMenuLayout: CanvasSizeMenuLayout? = null
 
@@ -52,6 +57,25 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
 
     private fun initLayout() {
         initMenuLayout()
+        loadGradientBackgrounds()
+    }
+
+    private fun loadGradientBackgrounds() {
+        flow {
+            val json = assets.open("json/gradients.json").bufferedReader().use {
+                it.readText()
+            }
+            val listType = object : TypeToken<List<GradientData>>() {}.type
+            val gradients = Gson().fromJson<List<GradientData>>(json, listType)
+            val colorArrays = gradients.map { it.toGradientColor() }
+            val gradientColor = colorArrays[Random.nextInt(0, colorArrays.size)]
+            Log.d("sqsong", "loadGradientBackgrounds: ${gradientColor.name}")
+            emit(gradientColor.colors)
+        }.flowOn(Dispatchers.IO)
+            .onEach {
+                binding.imageEditorView.addBackgroundLayer(it)
+            }
+            .launchIn(lifecycleScope)
     }
 
     private fun initMenuLayout() {
@@ -123,7 +147,14 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.menu_add_background -> {
+                    addImageType = 1
+                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    true
+                }
+
                 R.id.menu_add_image -> {
+                    addImageType = 0
                     pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     true
                 }
@@ -160,7 +191,11 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
         }.flowOn(Dispatchers.IO)
             .catch { Log.e("sqsong", "loadImageBitmap error: $it") }
             .onEach { bitmap ->
-                binding.imageEditorView.addImageLayer(bitmap)
+                if (addImageType == 0) {
+                    binding.imageEditorView.addImageLayer(bitmap)
+                } else {
+                    binding.imageEditorView.addBackgroundLayer(bitmap)
+                }
             }
             .launchIn(lifecycleScope)
     }

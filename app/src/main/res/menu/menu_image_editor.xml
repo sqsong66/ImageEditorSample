@@ -3,6 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/menu_add_background"
+        android:icon="@drawable/baseline_image_24"
+        android:title="Add Background"
+        app:iconTint="?attr/colorOnSurface"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_add_image"
         android:icon="@drawable/baseline_image_24"
         android:title="Add Image"

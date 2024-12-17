@@ -235,6 +235,24 @@ open class ImageEditorView @JvmOverloads constructor(
         }
     }
 
+    fun addBackgroundLayer(bitmap: Bitmap) {
+        BackgroundLayerView(context).apply {
+            onInitialLayout(this@ImageEditorView, bitmap, clipRect)
+            currentLayerView?.isSelectedLayer = false
+            currentLayerView?.invalidate()
+            currentLayerView = this
+        }
+    }
+
+    fun addBackgroundLayer(bgColor: IntArray) {
+        BackgroundLayerView(context).apply {
+            onInitialLayout(this@ImageEditorView, bgColor, clipRect)
+            currentLayerView?.isSelectedLayer = false
+            currentLayerView?.invalidate()
+            currentLayerView = this
+        }
+    }
+
     private fun calculateClipRect(width: Int, height: Int): RectF {
         val canvasRatio = canvasSize.width.toFloat() / canvasSize.height
         val viewRatio = width.toFloat() / height

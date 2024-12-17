@@ -12,16 +12,21 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
+import com.example.customviewsample.utils.dp2Px
+import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.layer.anno.LayerType
 
-class ImageLayerView @JvmOverloads constructor(
+open class ImageLayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
-) : AbsLayerView(context, attrs, defStyleAttr) {
+    override val cornerRadius: Float = dp2Px(6f),
+    override val borderWidth: Float = dp2Px(1.5f),
+    override val borderColor: Int = getThemeColor(context, com.google.android.material.R.attr.colorPrimary),
+) : AbsLayerView(context, attrs, defStyleAttr, cornerRadius, borderWidth, borderColor) {
 
-    private val imageMatrix = Matrix()
-    private var imageBitmap: Bitmap? = null
+    protected val imageMatrix = Matrix()
+    protected var imageBitmap: Bitmap? = null
 
     private val imagePaint by lazy {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -35,10 +40,6 @@ class ImageLayerView @JvmOverloads constructor(
             color = Color.GREEN
             style = Paint.Style.FILL
         }
-    }
-
-    init {
-        setBackgroundColor(Color.TRANSPARENT)
     }
 
     override fun getViewLayerType(): Int = LayerType.LAYER_IMAGE
@@ -90,7 +91,7 @@ class ImageLayerView @JvmOverloads constructor(
         super.onLayout(changed, left, top, right, bottom)
     }
 
-    fun onInitialLayout(parentView: ViewGroup, bitmap: Bitmap, clipRect: RectF) {
+    open fun onInitialLayout(parentView: ViewGroup, bitmap: Bitmap, clipRect: RectF) {
         this.imageBitmap = bitmap
         this.isSelectedLayer = true
         // 根据图片最长边相对控件最短边的[SCALE_FACTOR]倍数进行中心缩放展示
@@ -123,12 +124,11 @@ class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
         imageBitmap?.let { drawImageBitmap(canvas, it) }
         Log.d("songmao", "ImageLayerView onDraw")
     }
 
-    private fun drawImageBitmap(canvas: Canvas, bitmap: Bitmap) {
+    protected fun drawImageBitmap(canvas: Canvas, bitmap: Bitmap) {
         if (isSelectedLayer && !isSaveMode) {
             pathRect.set(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
             imageMatrix.mapRect(pathRect)

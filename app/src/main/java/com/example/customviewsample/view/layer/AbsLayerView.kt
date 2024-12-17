@@ -24,9 +24,9 @@ abstract class AbsLayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
-    protected val cornerRadius: Float = dp2Px(6f),
-    protected val borderWidth: Float = dp2Px(1.5f),
-    protected val borderColor: Int = getThemeColor(context, com.google.android.material.R.attr.colorPrimary),
+    protected open val cornerRadius: Float = dp2Px(6f),
+    protected open val borderWidth: Float = dp2Px(1.5f),
+    protected open val borderColor: Int = getThemeColor(context, com.google.android.material.R.attr.colorPrimary),
 ) : View(context, attrs, defStyleAttr) {
 
     var isSelectedLayer = false
@@ -286,7 +286,7 @@ abstract class AbsLayerView @JvmOverloads constructor(
      * @param destScale 目标缩放比例(最终缩放比例)
      * @param factor 变换因子(0f ~ 1f)
      */
-    fun transformLayerByResize(clipRect: RectF, destScale: Float, factor: Float) {
+    open fun transformLayerByResize(clipRect: RectF, destScale: Float, factor: Float) {
         // 计算变换大小
         val diffWidth = resizeSize.width * destScale - tempSize.width
         val diffHeight = resizeSize.height * destScale - tempSize.height
