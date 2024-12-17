@@ -135,7 +135,7 @@ open class ImageEditorView @JvmOverloads constructor(
 
     private fun handleAttributes(context: Context, attrs: AttributeSet?) {
         context.obtainStyledAttributes(attrs, R.styleable.ImageEditorView).apply {
-            cornerRadius = getDimension(R.styleable.ImageEditorView_iev_cornerRadius, dp2Px(8))
+            cornerRadius = getDimension(R.styleable.ImageEditorView_iev_cornerRadius, dp2Px(6))
             borderWidth = getDimension(R.styleable.ImageEditorView_iev_borderWidth, dp2Px(1.5f))
             borderColor = getColor(R.styleable.ImageEditorView_iev_borderColor, getThemeColor(context, com.google.android.material.R.attr.colorPrimary))
             recycle()

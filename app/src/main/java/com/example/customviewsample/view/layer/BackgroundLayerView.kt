@@ -16,7 +16,7 @@ class BackgroundLayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
-) : ImageLayerView(context, attrs, defStyleAttr, cornerRadius = 0f) {
+) : ImageLayerView(context, attrs, defStyleAttr) {
 
     private var bgColor: IntArray? = null
 
