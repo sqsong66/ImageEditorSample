@@ -5,6 +5,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.DashPathEffect
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
@@ -27,18 +29,23 @@ import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.AlphaGridDrawHelper
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.GestureMode
+import com.example.customviewsample.view.layer.anno.LayerRotation
 import com.example.customviewsample.view.layer.manager.UndoRedoManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
 
 const val SCALE_FACTOR = 0.8f
+const val ROTATION_THRESHOLD = 10.0f
 const val COORDINATE_DETECT_OFFSET = 5f
 const val COORDINATE_MOVE_THRESHOLD = 6f
 private const val MIN_MOVE_DISTANCE = 10f
 private const val MAX_CLICK_DURATION = 400L
 
-class ImageEditorView @JvmOverloads constructor(
+open class ImageEditorView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
@@ -81,14 +88,31 @@ class ImageEditorView @JvmOverloads constructor(
     @CoordinateLocation
     private var coordinateLoc: Int = CoordinateLocation.COORDINATE_NONE
 
+    @LayerRotation
+    private var layerRotation: Int = LayerRotation.ROTATION_NONE
+
+    private val dashPathEffect by lazy {
+        DashPathEffect(floatArrayOf(dp2Px(3), dp2Px(3)), 0f)
+    }
+
     private val vibratorHelper by lazy { VibratorHelper(context) }
     var canvasSize = CanvasSize(width = 1512, height = 1512, iconRes = R.drawable.ic_picture, title = "Square", isTint = true)
         private set
 
-    protected val borderPaint by lazy {
+    private val borderPaint by lazy {
         Paint().apply {
             color = borderColor
             style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            strokeWidth = borderWidth
+        }
+    }
+
+    private val testPaint by lazy {
+        Paint().apply {
+            color = Color.RED
+            style = Paint.Style.FILL
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
             strokeWidth = borderWidth
@@ -119,7 +143,7 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     override fun dispatchDraw(canvas: Canvas) {
-        Log.i("sqsong", "ImageEditorView dispatchDraw")
+        Log.i("songmao", "ImageEditorView dispatchDraw")
         if (isSaveMode) {
             super.dispatchDraw(canvas)
         } else {
@@ -129,13 +153,36 @@ class ImageEditorView @JvmOverloads constructor(
             canvas.clipPath(clipPath)
             alphaGridDrawHelper.drawAlphaGrid(canvas, clipRect)
             super.dispatchDraw(canvas)
+
+            currentLayerView?.let { layerView ->
+                drawRotationAuxiliaryLine(canvas, layerView)
+                drawCoordinateAuxiliaryLine(canvas)
+                /*val point = layerView.getLayerCenterPoint()
+                canvas.drawCircle(point.x, point.y, 10f, testPaint)*/
+            }
             canvas.restore()
-            drawCoordinateAuxiliaryLine(canvas)
         }
+    }
+
+    private fun drawRotationAuxiliaryLine(canvas: Canvas, layerView: AbsLayerView) {
+        if (layerRotation == LayerRotation.ROTATION_NONE) return
+        borderPaint.pathEffect = dashPathEffect
+        val point = layerView.getLayerCenterPoint()
+        val radian = Math.toRadians((layerView.rotation).toDouble())
+        val dx = cos(radian)
+        val dy = sin(radian)
+        val length = hypot(clipRect.width(), clipRect.height()) * 1.5f
+        val halfLength = length / 2f
+        val x1 = point.x - dx * halfLength
+        val y1 = point.y - dy * halfLength
+        val x2 = point.x + dx * halfLength
+        val y2 = point.y + dy * halfLength
+        canvas.drawLine(x1.toFloat(), y1.toFloat(), x2.toFloat(), y2.toFloat(), borderPaint)
     }
 
     private fun drawCoordinateAuxiliaryLine(canvas: Canvas) {
         if (coordinateLoc == CoordinateLocation.COORDINATE_NONE) return
+        borderPaint.pathEffect = null
         when (coordinateLoc) {
             CoordinateLocation.COORDINATE_CENTER -> {
                 canvas.drawLine(clipRect.centerX(), clipRect.top, clipRect.centerX(), clipRect.bottom, borderPaint)
@@ -143,11 +190,11 @@ class ImageEditorView @JvmOverloads constructor(
             }
 
             CoordinateLocation.COORDINATE_CENTER_X -> {
-                canvas.drawLine(clipRect.left, clipRect.centerY(), clipRect.right, clipRect.centerY(), borderPaint)
+                canvas.drawLine(clipRect.centerX(), clipRect.top, clipRect.centerX(), clipRect.bottom, borderPaint)
             }
 
             CoordinateLocation.COORDINATE_CENTER_Y -> {
-                canvas.drawLine(clipRect.centerX(), clipRect.top, clipRect.centerX(), clipRect.bottom, borderPaint)
+                canvas.drawLine(clipRect.left, clipRect.centerY(), clipRect.right, clipRect.centerY(), borderPaint)
             }
         }
     }
@@ -180,12 +227,6 @@ class ImageEditorView @JvmOverloads constructor(
     }
 
     fun addImageLayer(bitmap: Bitmap) {
-        /*ImageLayerView(context, cornerRadius = dp2Px(6), isSelectedLayer = true).apply {
-            onInitialLayout(this@ImageEditorView, bitmap, clipRect)
-            currentLayerView?.isSelectedLayer = false
-            currentLayerView?.invalidateView()
-            currentLayerView = this
-        }*/
         ImageLayerView(context).apply {
             onInitialLayout(this@ImageEditorView, bitmap, clipRect)
             currentLayerView?.isSelectedLayer = false
@@ -324,6 +365,8 @@ class ImageEditorView @JvmOverloads constructor(
         stagingChildResizeInfo(updateLayoutInfo = true)
         currentLayerView?.resetLayerPivot()
         coordinateLoc = CoordinateLocation.COORDINATE_NONE
+        layerRotation = LayerRotation.ROTATION_NONE
+        invalidate()
     }
 
     private fun processMoveEvent(absLayer: AbsLayerView, event: MotionEvent) {
@@ -353,9 +396,12 @@ class ImageEditorView @JvmOverloads constructor(
             val deltaAngle = angle - fingerDownAngle
             val tx = moveFingerCenter.x - touchDownFingerCenter.x
             val ty = moveFingerCenter.y - touchDownFingerCenter.y
-            absLayer.onLayerTranslation(scale, deltaAngle, tx, ty, clipRect.centerX(), clipRect.centerY()) {
+            val (loc, rotation) = absLayer.onLayerTranslation(scale, deltaAngle, tx, ty, clipRect.centerX(), clipRect.centerY()) {
                 vibratorHelper.vibrate()
             }
+            coordinateLoc = loc
+            layerRotation = rotation
+            invalidate()
         }
     }
 

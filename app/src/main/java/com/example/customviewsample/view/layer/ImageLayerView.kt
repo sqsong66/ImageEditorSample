@@ -37,6 +37,10 @@ class ImageLayerView @JvmOverloads constructor(
         }
     }
 
+    init {
+        setBackgroundColor(Color.TRANSPARENT)
+    }
+
     override fun getViewLayerType(): Int = LayerType.LAYER_IMAGE
 
     override fun isTouchedInLayer(x: Float, y: Float): Boolean {
@@ -121,6 +125,7 @@ class ImageLayerView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         imageBitmap?.let { drawImageBitmap(canvas, it) }
+        Log.d("songmao", "ImageLayerView onDraw")
     }
 
     private fun drawImageBitmap(canvas: Canvas, bitmap: Bitmap) {

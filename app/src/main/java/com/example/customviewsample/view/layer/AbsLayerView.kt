@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
 import android.util.Size
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -15,6 +16,7 @@ import android.widget.ImageView
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
+import com.example.customviewsample.view.layer.anno.LayerRotation
 import com.example.customviewsample.view.layer.anno.LayerType
 import kotlin.math.abs
 
@@ -34,8 +36,9 @@ abstract class AbsLayerView @JvmOverloads constructor(
 
     private val resizeRect = RectF()
     private val tempMatrix = Matrix()
-    private val centerPoint = PointF()
     private val layoutInfo = LayoutInfo()
+    private val stagingCenterPoint = PointF()
+    private val tempArray = FloatArray(2)
 
     // 临时保存的中心点，在进行尺寸变换动画前临时存储，在动画过程中中心点的计算基于该中心点
     private var tempCenterPoint = PointF()
@@ -49,8 +52,13 @@ abstract class AbsLayerView @JvmOverloads constructor(
     // 缓存子控件的缩放、旋转信息，方便在移动时进行各种变换操作，变换操作基于缓存的数值
     private var layerCacheInfo = LayerTempCacheInfo()
 
+    private val pivotPoint = PointF()
+
     @CoordinateLocation
     private var coordinateLoc: Int = CoordinateLocation.COORDINATE_NONE
+
+    @LayerRotation
+    var layerRotation: Int = LayerRotation.ROTATION_0
 
     protected val borderPaint by lazy {
         Paint().apply {
@@ -81,17 +89,19 @@ abstract class AbsLayerView @JvmOverloads constructor(
      * @param dy y轴偏移量
      * @param pcx 父控件中心点x轴坐标
      * @param pcy 父控件中心点y轴坐标
+     * @param onVibrate 震动回调
      * @return 判断子控件坐标与父控件坐标的关系(是否重合)
      */
     @CoordinateLocation
     fun translateLayer(dx: Float, dy: Float, pcx: Float, pcy: Float, onVibrate: () -> Unit): Int {
         if (detectCenterCoordinateAndRotation()) {
             val preCoordinateLoc = coordinateLoc
-            coordinateLoc = detectCoordinateLoc(pcx, pcy)
+            val point = getLayerCenterPoint()
+            val cx = point.x
+            val cy = point.y
+            coordinateLoc = detectCoordinateLoc(cx, cy, pcx, pcy)
             var tx = dx
             var ty = dy
-            val cx = (left + right) / 2f + translationX
-            val cy = (top + bottom) / 2f + translationY
             when (coordinateLoc) {
                 CoordinateLocation.COORDINATE_CENTER -> {
                     if (abs(dx) < COORDINATE_MOVE_THRESHOLD) tx = pcx - cx
@@ -117,16 +127,112 @@ abstract class AbsLayerView @JvmOverloads constructor(
     }
 
     /**
+     * 子控件在触摸移动时进行缩放/旋转/平移操作。
+     * @param scaleFactor 缩放因子
+     * @param deltaAngle 旋转角度
+     * @param tx x轴偏移量
+     * @param ty y轴偏移量
+     * @param pcx 父控件中心点x轴坐标
+     * @param pcy 父控件中心点y轴坐标
+     * @param onVibrate 震动回调
+     */
+    open fun onLayerTranslation(scaleFactor: Float, deltaAngle: Float, tx: Float, ty: Float, pcx: Float, pcy: Float, onVibrate: () -> Unit): Pair<Int, Int> {
+        scaleX = scaleFactor * layerCacheInfo.scaleX
+        scaleY = scaleFactor * layerCacheInfo.scaleY
+        val dr = deltaAngle + layerCacheInfo.rotation - rotation
+        val layerRotation = rotateLayer(dr, onVibrate)
+
+        val dx = tx + layerCacheInfo.translationX - translationX
+        val dy = ty + layerCacheInfo.translationY - translationY
+        // Log.w("sqsong", "onLayerTranslation, rotation: $rotation")
+        val translateLoc = translateLayer(dx, dy, pcx, pcy, onVibrate)
+        invalidate() // 需要重绘边框
+        return translateLoc to layerRotation
+    }
+
+    @LayerRotation
+    private fun rotateLayer(angle: Float, onVibrate: () -> Unit): Int {
+        if (detectCenterCoordinateAndRotation()) {
+            val preRotation = layerRotation
+            layerRotation = detectLayerRotation()
+            var destAngle = angle
+            when (layerRotation) {
+                LayerRotation.ROTATION_0 -> {
+                    if (abs(angle) < ROTATION_THRESHOLD) destAngle = 0f - rotation
+                    if (preRotation != layerRotation) onVibrate()
+                    Log.d("sqsong", "angle: $angle, destAngle: $destAngle, rotation: ${rotation + destAngle}")
+                }
+
+                LayerRotation.ROTATION_45 -> {
+                    if (abs(angle) < ROTATION_THRESHOLD) destAngle = (if (rotation > 0f) 45f else -45f) - rotation
+                    if (preRotation != layerRotation) onVibrate()
+                }
+
+                LayerRotation.ROTATION_90 -> {
+                    if (abs(angle) < ROTATION_THRESHOLD) destAngle = (if (rotation > 0f) 90f else -90f) - rotation
+                    if (preRotation != layerRotation) onVibrate()
+                }
+
+                LayerRotation.ROTATION_135 -> {
+                    if (abs(angle) < ROTATION_THRESHOLD) destAngle = (if (rotation > 0f) 135f else -135f) - rotation
+                    if (preRotation != layerRotation) onVibrate()
+                }
+
+                LayerRotation.ROTATION_180 -> {
+                    if (abs(angle) < ROTATION_THRESHOLD) destAngle = (if (rotation > 0f) 180f else -180f) - rotation
+                    if (preRotation != layerRotation) onVibrate()
+                }
+
+                LayerRotation.ROTATION_225 -> {
+                    if (abs(angle) < ROTATION_THRESHOLD) destAngle = (if (rotation > 0f) 225f else -225f) - rotation
+                    if (preRotation != layerRotation) onVibrate()
+                }
+
+                LayerRotation.ROTATION_270 -> {
+                    if (abs(angle) < ROTATION_THRESHOLD) destAngle = (if (rotation > 0f) 270f else -270f) - rotation
+                    if (preRotation != layerRotation) onVibrate()
+                }
+
+                LayerRotation.ROTATION_315 -> {
+                    if (abs(angle) < ROTATION_THRESHOLD) destAngle = (if (rotation > 0f) 315f else -315f) - rotation
+                    if (preRotation != layerRotation) onVibrate()
+                }
+            }
+            rotation += destAngle
+        } else {
+            rotation += angle
+        }
+        Log.w("sqsong", "rotateLayer, rotation: $rotation")
+        return layerRotation
+    }
+
+    @LayerRotation
+    private fun detectLayerRotation(): Int {
+        val angle = abs(rotation % 360)
+        return when (angle) {
+            in 0f..1f -> LayerRotation.ROTATION_0
+            in 359f..360f -> LayerRotation.ROTATION_0
+            in 44f..46f -> LayerRotation.ROTATION_45
+            in 89f..91f -> LayerRotation.ROTATION_90
+            in 134f..136f -> LayerRotation.ROTATION_135
+            in 179f..181f -> LayerRotation.ROTATION_180
+            in 224f..226f -> LayerRotation.ROTATION_225
+            in 269f..271f -> LayerRotation.ROTATION_270
+            in 314f..316f -> LayerRotation.ROTATION_315
+            else -> LayerRotation.ROTATION_NONE
+        }
+    }
+
+    /**
      * 检测图层中心点是否与父容器中心点重合
+     * @param cx 子控件中心点x坐标(相对于父容器)
+     * @param cy 子控件中心点y坐标(相对于父容器)
      * @param px 父容器中心点x坐标
      * @param py 父容器中心点y坐标
      * @return [CoordinateLocation]
      */
     @CoordinateLocation
-    private fun detectCoordinateLoc(px: Float, py: Float): Int {
-        // cx/cy：子控件相对于父控件的中心点坐标
-        val cx = (left + right) / 2f + translationX
-        val cy = (top + bottom) / 2f + translationY
+    private fun detectCoordinateLoc(cx: Float, cy: Float, px: Float, py: Float): Int {
         val inCenterX = abs(px - cx) <= COORDINATE_DETECT_OFFSET
         val inCenterY = abs(py - cy) <= COORDINATE_DETECT_OFFSET
         return when {
@@ -161,7 +267,7 @@ abstract class AbsLayerView @JvmOverloads constructor(
         // update center point
         val cx = (left + right) / 2f + translationX
         val cy = (top + bottom) / 2f + translationY
-        centerPoint.set(cx, cy)
+        stagingCenterPoint.set(cx, cy)
         resizeSize = Size(right - left, bottom - top)
     }
 
@@ -192,15 +298,15 @@ abstract class AbsLayerView @JvmOverloads constructor(
         layoutInfo.heightRatio = heightRatio
 
         // 计算变换位置
-        val dx = centerPoint.x - clipRect.centerX()
-        val dy = centerPoint.y - clipRect.centerY()
+        val dx = stagingCenterPoint.x - clipRect.centerX()
+        val dy = stagingCenterPoint.y - clipRect.centerY()
         val tx = dx * destScale - dx
         val ty = dy * destScale - dy
         val deltaTx = tx + (clipRect.centerX() - resizeRect.centerX())
         val deltaTy = ty + (clipRect.centerY() - resizeRect.centerY())
         // 终点坐标
-        val cx = centerPoint.x + deltaTx
-        val cy = centerPoint.y + deltaTy
+        val cx = stagingCenterPoint.x + deltaTx
+        val cy = stagingCenterPoint.y + deltaTy
         // 从起始坐标tempCenterPoint根据factor变换到终点坐标(cx, cy)
         val tcx = tempCenterPoint.x + (cx - tempCenterPoint.x) * factor
         val tcy = tempCenterPoint.y + (cy - tempCenterPoint.y) * factor
@@ -238,6 +344,7 @@ abstract class AbsLayerView @JvmOverloads constructor(
         // StackOverflow: https://stackoverflow.com/questions/14415035/setpivotx-works-strange-on-scaled-view
         // 在进行缩放、旋转操作时，先将缩放锚点设置到双指中心点
         val focusPoint = mapCoordinateToLocal(this, focusX, focusY)
+        pivotPoint.set(focusPoint[0] - width / 2f, focusPoint[1] - height / 2f)
         resetViewPivotTo(focusPoint[0], focusPoint[1], tempMatrix)
         layerCacheInfo = LayerTempCacheInfo(
             scaleX = scaleX,
@@ -246,24 +353,6 @@ abstract class AbsLayerView @JvmOverloads constructor(
             translationX = translationX,
             translationY = translationY
         )
-    }
-
-    /**
-     * 子控件在触摸移动时进行缩放/旋转/平移操作。
-     * @param scaleFactor 缩放因子
-     * @param deltaAngle 旋转角度
-     * @param tx x轴偏移量
-     * @param ty y轴偏移量
-     */
-    open fun onLayerTranslation(scaleFactor: Float, deltaAngle: Float, tx: Float, ty: Float, pcx: Float, pcy: Float, onVibrate: () -> Unit) {
-        scaleX = scaleFactor * layerCacheInfo.scaleX
-        scaleY = scaleFactor * layerCacheInfo.scaleY
-        rotation = deltaAngle + layerCacheInfo.rotation
-        translationX = tx + layerCacheInfo.translationX
-        translationY = ty + layerCacheInfo.translationY
-        val preCoordinateLoc = coordinateLoc
-        coordinateLoc = detectCoordinateLoc(pcx, pcy)
-        invalidate() // 需要重绘边框
     }
 
     /**
@@ -277,7 +366,18 @@ abstract class AbsLayerView @JvmOverloads constructor(
     /**
      * 重置子控件的缩放、旋转锚点(为自身中心点)
      */
-    fun resetLayerPivot() = resetViewPivotTo(width / 2f, height / 2f, tempMatrix)
+    fun resetLayerPivot() {
+        pivotPoint.set(0f, 0f)
+        resetViewPivotTo(width / 2f, height / 2f, tempMatrix)
+    }
+
+    fun getLayerCenterPoint(): PointF {
+        tempArray[0] = width / 2f
+        tempArray[1] = height / 2f
+        matrix.mapPoints(tempArray)
+        tempCenterPoint.set(tempArray[0] + left, tempArray[1] + top)
+        return tempCenterPoint
+    }
 
     /**
      * 点击到控件时进行的缩放动画
