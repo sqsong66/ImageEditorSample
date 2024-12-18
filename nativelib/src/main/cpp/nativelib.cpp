@@ -311,3 +311,45 @@ Java_com_sqsong_nativelib_NativeLib_cutoutBitmapBySource(JNIEnv *env, jobject th
     delete[] outData;
     return outputBitmap;
 }
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_sqsong_nativelib_NativeLib_hasAlpha(JNIEnv *env, jobject thiz, jobject bitmap) {
+    // 获取Bitmap基本信息
+    AndroidBitmapInfo info;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) {
+        return JNI_FALSE; // 无法获取信息则直接返回
+    }
+
+    // 这里要求bitmap为ARGB_8888格式，这样必然有Alpha通道数据
+    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+        return JNI_FALSE;
+    }
+
+    // 锁定bitmap的像素进行操作
+    void *bitmapPixels = nullptr;
+    if (AndroidBitmap_lockPixels(env, bitmap, &bitmapPixels) < 0) {
+        return JNI_FALSE;
+    }
+
+    // 使用bitmap的数据创建OpenCV的Mat对象，不拷贝数据，直接指向同一块内存
+    cv::Mat mat(info.height, info.width, CV_8UC4, bitmapPixels);
+
+    // 分离通道，以获得Alpha通道
+    std::vector<cv::Mat> channels;
+    cv::split(mat, channels); // channels[3]为Alpha通道
+
+    // 解锁像素，后面不再需要直接访问bitmapPixels
+    AndroidBitmap_unlockPixels(env, bitmap);
+
+    // 利用OpenCV的minMaxLoc快速找到Alpha通道的最小值和最大值
+    double minVal = 0, maxVal = 0;
+    cv::minMaxLoc(channels[3], &minVal, &maxVal);
+
+    // 若最小Alpha值小于255，说明存在至少一个像素不是完全不透明(有透明度)
+    if (minVal < 255.0) {
+        return JNI_TRUE;
+    } else {
+        return JNI_FALSE;
+    }
+}

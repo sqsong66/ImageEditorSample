@@ -20,6 +20,7 @@ data class LayerSnapShot(
     val viewLayerType: Int,
     val layoutInfo: LayoutInfo,
     val imageLayerInfo: ImageLayerInfo? = null,
+    val backgroundLayerInfo: BackgroundLayerInfo? = null,
 ) : Parcelable
 
 @Parcelize
@@ -57,10 +58,10 @@ data class BackgroundLayerInfo(
 @Parcelize
 data class ImageLayerInfo(
     val imageCachePath: String?,
-    val isLightOn: Boolean = false,
     val scaleX: Float = 1f,
     val scaleY: Float = 1f,
     val rotation: Float = 0f,
     val translationX: Float = 0f,
     val translationY: Float = 0f,
+    val isLightOn: Boolean = false,
 ) : Parcelable

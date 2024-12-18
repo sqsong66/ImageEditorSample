@@ -23,8 +23,45 @@
             app:layout_constraintTop_toTopOf="parent"
             app:menu="@menu/menu_image_editor"
             app:navigationIcon="@drawable/baseline_arrow_back_24"
-            app:navigationIconTint="?attr/colorOnSurface"
-            app:title="Image Editor" />
+            app:navigationIconTint="?attr/colorOnSurface">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical">
+
+                <androidx.appcompat.widget.LinearLayoutCompat
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:id="@+id/undoIv"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="8dp"
+                        app:srcCompat="@drawable/ic_undo"
+                        app:tint="?attr/colorOnSurface" />
+
+                    <View
+                        android:layout_width="8dp"
+                        android:layout_height="1dp" />
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:id="@+id/redoIv"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="8dp"
+                        app:srcCompat="@drawable/ic_redo"
+                        app:tint="?attr/colorOnSurface" />
+
+                </androidx.appcompat.widget.LinearLayoutCompat>
+
+            </FrameLayout>
+
+        </com.google.android.material.appbar.MaterialToolbar>
 
         <com.example.customviewsample.view.layer.ImageEditorView
             android:id="@+id/imageEditorView"
@@ -36,6 +73,41 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/toolbar" />
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:id="@+id/editLayerLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/shape_layer_edit"
+            android:elevation="3dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="@id/imageEditorView"
+            app:layout_constraintTop_toTopOf="@id/imageEditorView"
+            tools:visibility="visible">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/deleteIv"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="4dp"
+                app:srcCompat="@drawable/ic_delete"
+                app:tint="?attr/colorOnSecondaryContainer" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/moreIv"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="4dp"
+                app:srcCompat="@drawable/ic_more_horiz"
+                app:tint="?attr/colorOnSecondaryContainer" />
+
+        </androidx.appcompat.widget.LinearLayoutCompat>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

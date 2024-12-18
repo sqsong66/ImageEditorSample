@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.os.Build
+import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.Window
@@ -215,3 +216,15 @@ fun TextView.setTopDrawable(drawableRes: Int) {
 }
 
 fun View.layoutInflater(): LayoutInflater = LayoutInflater.from(context)
+
+fun View.measuredSize(): Size {
+    val width = width
+    val height = height
+    if (width != 0 && height != 0) {
+        return Size(width, height)
+    }
+    val widthSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.UNSPECIFIED)
+    val heightSpec = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.UNSPECIFIED)
+    measure(widthSpec, heightSpec)
+    return Size(measuredWidth, measuredHeight)
+}

@@ -13,7 +13,7 @@ class UndoRedoManager {
         redoStack.clear()
     }
 
-    fun canUndo(): Boolean = undoStack.size > 1
+    fun canUndo(): Boolean = undoStack.size > 2
 
     fun canRedo(): Boolean = redoStack.isNotEmpty()
 

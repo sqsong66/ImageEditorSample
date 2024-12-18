@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="4dp"
@@ -11,6 +12,7 @@
     android:paddingVertical="8dp">
 
     <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/menuIconIv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:paddingHorizontal="12dp"
@@ -19,9 +21,10 @@
         app:tint="?attr/colorOnSurface" />
 
     <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/menuNameTv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Menu"
-        android:textAppearance="?attr/textAppearanceLabelLarge" />
+        android:textAppearance="?attr/textAppearanceLabelLarge"
+        tools:text="Menu" />
 
 </androidx.appcompat.widget.LinearLayoutCompat>

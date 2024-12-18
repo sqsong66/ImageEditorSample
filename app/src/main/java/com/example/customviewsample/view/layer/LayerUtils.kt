@@ -7,7 +7,14 @@ import android.view.MotionEvent
 import android.view.View
 import com.example.customviewsample.common.ext.keepTwoDecimal
 import kotlin.math.atan2
+import kotlin.math.max
 import kotlin.math.sqrt
+
+fun getNewBgScale(resizeRect: RectF, newRect: RectF): Float {
+    val ws = newRect.width() / resizeRect.width()
+    val hs = newRect.height() / resizeRect.height()
+    return max(ws, hs)
+}
 
 fun getNewScale(resizeRect: RectF, newRect: RectF): Float {
     return when {

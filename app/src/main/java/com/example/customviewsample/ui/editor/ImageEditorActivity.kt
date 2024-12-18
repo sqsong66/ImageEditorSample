@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup.MarginLayoutParams
+import android.view.ViewPropertyAnimator
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.graphics.Insets
@@ -15,13 +16,19 @@ import androidx.lifecycle.lifecycleScope
 import com.example.customviewsample.R
 import com.example.customviewsample.base.BaseActivity
 import com.example.customviewsample.common.behavior.EditMenuBottomSheetBehavior
+import com.example.customviewsample.common.ext.measuredSize
+import com.example.customviewsample.common.ext.setEnableState
 import com.example.customviewsample.common.ext.setMaterialShapeBackgroundDrawable
+import com.example.customviewsample.common.ext.setRippleBackgroundColor
 import com.example.customviewsample.data.GradientData
+import com.example.customviewsample.data.MainMenuData
+import com.example.customviewsample.data.anno.MenuType
 import com.example.customviewsample.databinding.ActivityImageEditorBinding
 import com.example.customviewsample.ui.editor.adapter.EditorMainMenuAdapter
 import com.example.customviewsample.ui.editor.menus.CanvasSizeMenuLayout
 import com.example.customviewsample.utils.decodeBitmapByGlide
 import com.example.customviewsample.utils.dp2Px
+import com.example.customviewsample.view.layer.listener.ImageEditorActionListener
 import com.google.android.material.shape.CornerFamily
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -35,10 +42,11 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
 
-class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityImageEditorBinding::inflate) {
+class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityImageEditorBinding::inflate), ImageEditorActionListener {
 
     private var addImageType = 0 // 0-添加图片 1-添加背景
     private var bottomInsets = 0
+    private var hideAnimator: ViewPropertyAnimator? = null
     private var backgroundMenuLayout: CanvasSizeMenuLayout? = null
 
     private val pickMedia = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -46,9 +54,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     }
 
     private val mainMenuAdapter by lazy {
-        EditorMainMenuAdapter {
-            showBackgroundMenu()
-        }
+        EditorMainMenuAdapter(::onMainMenuClick)
     }
 
     override fun initActivity(savedInstanceState: Bundle?) {
@@ -58,13 +64,19 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     private fun initLayout() {
         initMenuLayout()
         loadGradientBackgrounds()
+        binding.root.post { initRedoUndoLayout() }
+    }
+
+    private fun initRedoUndoLayout() {
+        binding.undoIv.setEnableState(false)
+        binding.undoIv.setRippleBackgroundColor(allCornerRadius = dp2Px(32))
+        binding.redoIv.setEnableState(false)
+        binding.redoIv.setRippleBackgroundColor(allCornerRadius = dp2Px(32))
     }
 
     private fun loadGradientBackgrounds() {
         flow {
-            val json = assets.open("json/gradients.json").bufferedReader().use {
-                it.readText()
-            }
+            val json = assets.open("json/gradients.json").bufferedReader().use { it.readText() }
             val listType = object : TypeToken<List<GradientData>>() {}.type
             val gradients = Gson().fromJson<List<GradientData>>(json, listType)
             val colorArrays = gradients.map { it.toGradientColor() }
@@ -73,7 +85,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
             emit(gradientColor.colors)
         }.flowOn(Dispatchers.IO)
             .onEach {
-                binding.imageEditorView.addBackgroundLayer(it)
+                binding.imageEditorView.updateBackgroundLayerColor(it)
             }
             .launchIn(lifecycleScope)
     }
@@ -143,6 +155,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     }
 
     override fun initListeners() {
+        binding.imageEditorView.setImageEditorActionListener(this)
         binding.previewIv.setOnClickListener { binding.previewIv.visibility = View.GONE }
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.toolbar.setOnMenuItemClickListener { item ->
@@ -172,9 +185,18 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
                     true
                 }
 
+                R.id.menu_color_background -> {
+                    loadGradientBackgrounds()
+                    true
+                }
+
                 else -> false
             }
         }
+        binding.deleteIv.setOnClickListener { binding.imageEditorView.removeCurrentLayer() }
+        binding.moreIv.setOnClickListener { }
+        binding.undoIv.setOnClickListener { }
+        binding.redoIv.setOnClickListener { }
     }
 
     override fun onWindowInsetsApplied(insets: Insets) {
@@ -183,6 +205,18 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
         binding.contentLayout.updatePadding(top = insets.top)
         binding.mainMenuLayout.updatePadding(bottom = insets.bottom)
         bottomInsets = insets.bottom
+    }
+
+    private fun onMainMenuClick(menuData: MainMenuData) {
+        when (menuData.menuType) {
+            MenuType.MENU_MAIN_LAYERS -> {
+
+            }
+
+            MenuType.MENU_MAIN_RESIZE -> {
+                showBackgroundMenu()
+            }
+        }
     }
 
     private fun loadImageBitmap(uri: Uri) {
@@ -205,6 +239,59 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
             return
         }
         super.onHandleBackPress()
+    }
+
+    override fun onShowLayerEditMenu(x: Float, y: Float) {
+        val shouldAnim = binding.editLayerLayout.visibility == View.GONE
+        binding.editLayerLayout.alpha = 0f
+        binding.editLayerLayout.scaleX = 0.8f
+        binding.editLayerLayout.scaleY = 0.8f
+        binding.editLayerLayout.visibility = View.VISIBLE
+        val layoutSize = binding.editLayerLayout.measuredSize()
+        Log.d("sqsong", "onShowLayerEditMenu: $x, $y, layoutSize: $layoutSize")
+        var top = y.toInt() - layoutSize.height
+        if (top < 0) top = 0
+        val bottom = binding.imageEditorView.height - layoutSize.height
+        if (top > bottom) top = bottom
+        var left = x.toInt() - layoutSize.width / 2
+        if (left < 0) left = 0
+        val right = binding.imageEditorView.width - layoutSize.width
+        if (left > right) left = right
+        (binding.editLayerLayout.layoutParams as MarginLayoutParams).apply {
+            this.topMargin = top
+            this.leftMargin = left
+            binding.editLayerLayout.layoutParams = this
+        }
+        hideAnimator?.cancel()
+        if (shouldAnim) {
+            binding.editLayerLayout.animate()
+                .alpha(1f)
+                .setDuration(150)
+                .scaleX(1f)
+                .scaleY(1f)
+                .start()
+        } else {
+            binding.editLayerLayout.alpha = 1f
+            binding.editLayerLayout.scaleX = 1f
+            binding.editLayerLayout.scaleY = 1f
+        }
+    }
+
+    override fun hideLayerEditMenu() {
+        Log.w("sqsong", "hideLayerEditMenu")
+        hideAnimator = binding.editLayerLayout.animate()
+            .alpha(0f)
+            .setDuration(150)
+            .scaleX(0.8f)
+            .scaleY(0.8f)
+            .withEndAction {
+                binding.editLayerLayout.visibility = View.GONE
+            }.apply { start() }
+    }
+
+    override fun onUndoRedoStateChanged(canUndo: Boolean, canRedo: Boolean) {
+        binding.undoIv.setEnableState(canUndo)
+        binding.redoIv.setEnableState(canRedo)
     }
 
 }

@@ -10,12 +10,17 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.ViewGroup
+import com.example.customviewsample.common.helper.BitmapCacheHelper
 import com.example.customviewsample.view.layer.anno.LayerType
+import com.example.customviewsample.view.layer.data.BackgroundLayerInfo
+import com.example.customviewsample.view.layer.data.LayerSnapShot
+import com.sqsong.nativelib.NativeLib
 
 class BackgroundLayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
+    override val layoutInfo: LayoutInfo = LayoutInfo(),
 ) : ImageLayerView(context, attrs, defStyleAttr) {
 
     private var bgColor: IntArray? = null
@@ -26,23 +31,56 @@ class BackgroundLayerView @JvmOverloads constructor(
         }
     }
 
-    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        super.onLayout(changed, left, top, right, bottom)
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
         bgColor?.let { color ->
-            val shader = LinearGradient(0f, height / 2f, width.toFloat(), height / 2f, color, null, Shader.TileMode.CLAMP)
-            bgPaint.shader = shader
+            bgPaint.shader = LinearGradient(0f, height / 2f, width.toFloat(), height / 2f, color, null, Shader.TileMode.CLAMP)
         }
     }
 
     override fun getViewLayerType(): Int = LayerType.LAYER_BACKGROUND
+
+    override fun toLayerSnapshot(): LayerSnapShot {
+        val cachePath = imageBitmap?.let {
+            BitmapCacheHelper.get().cacheBitmap(context, it, NativeLib.hasAlpha(it))
+        }
+        val layerInfo = BackgroundLayerInfo(bgCachePath = cachePath, bgColor = bgColor?.clone(), scaleX = scaleX, scaleY = scaleY, rotation = rotation, translationX = translationX, translationY = translationY)
+        return LayerSnapShot(getViewLayerType(), layoutInfo.copy(), backgroundLayerInfo = layerInfo)
+    }
+
+    override fun isEditMenuAvailable(): Boolean = false
 
     override fun isTouchedInLayer(x: Float, y: Float): Boolean {
         val localPoint = mapCoordinateToLocal(this, x, y)
         return localPoint[0] >= 0 && localPoint[0] <= width && localPoint[1] >= 0 && localPoint[1] <= height
     }
 
-    override fun transformLayerByResize(clipRect: RectF, destScale: Float, factor: Float) {
-        super.transformLayerByResize(clipRect, destScale, factor)
+    override fun transformLayerByResize(clipRect: RectF, destScale: Float, destBgScale: Float, factor: Float) {
+        // 计算变换大小
+        val diffWidth = resizeSize.width * destBgScale - tempSize.width
+        val diffHeight = resizeSize.height * destBgScale - tempSize.height
+        val newWidth = tempSize.width + diffWidth * factor
+        val newHeight = tempSize.height + diffHeight * factor
+        val widthRatio = newWidth / clipRect.width()
+        val heightRatio = newHeight / clipRect.height()
+        layoutInfo.widthRatio = widthRatio
+        layoutInfo.heightRatio = heightRatio
+
+        // 计算变换位置
+        val dx = stagingCenterPoint.x - clipRect.centerX()
+        val dy = stagingCenterPoint.y - clipRect.centerY()
+        val tx = dx * destBgScale - dx
+        val ty = dy * destBgScale - dy
+        val deltaTx = tx + (clipRect.centerX() - resizeRect.centerX())
+        val deltaTy = ty + (clipRect.centerY() - resizeRect.centerY())
+        // 终点坐标
+        val cx = stagingCenterPoint.x + deltaTx
+        val cy = stagingCenterPoint.y + deltaTy
+        // 从起始坐标tempCenterPoint根据factor变换到终点坐标(cx, cy)
+        val tcx = tempCenterPoint.x + (cx - tempCenterPoint.x) * factor
+        val tcy = tempCenterPoint.y + (cy - tempCenterPoint.y) * factor
+        layoutInfo.centerXRatio = (tcx - clipRect.left) / clipRect.width()
+        layoutInfo.centerYRatio = (tcy - clipRect.top) / clipRect.height()
     }
 
     override fun onInitialLayout(parentView: ViewGroup, bitmap: Bitmap, clipRect: RectF) {
@@ -63,13 +101,13 @@ class BackgroundLayerView @JvmOverloads constructor(
         val imageWidth = (bitmap.width * scale).toInt()
         val imageHeight = (bitmap.height * scale).toInt()
         val layoutParams = ViewGroup.LayoutParams(imageWidth, imageHeight)
+        // 移除之前的背景图层
         (parentView.getChildAt(0) as? AbsLayerView)?.let { bgLayer ->
             if (bgLayer.getViewLayerType() == LayerType.LAYER_BACKGROUND) {
                 parentView.removeViewAt(0)
             }
         }
         parentView.addView(this, 0, layoutParams)
-
         val left = clipRect.centerX() - imageWidth / 2f
         val top = clipRect.centerY() - imageHeight / 2f
         val right = clipRect.centerX() + imageWidth / 2f
@@ -80,17 +118,28 @@ class BackgroundLayerView @JvmOverloads constructor(
 
     fun onInitialLayout(parentView: ViewGroup, bgColor: IntArray, clipRect: RectF) {
         this.bgColor = bgColor
+        this.imageBitmap = null
         this.isSelectedLayer = true
         val layerWidth = clipRect.width().toInt()
         val layerHeight = clipRect.height().toInt()
         val layoutParams = ViewGroup.LayoutParams(layerWidth, layerHeight)
-
-        val shader = LinearGradient(0f, layerHeight / 2f, layerWidth.toFloat(), layerHeight / 2f, bgColor, null, Shader.TileMode.CLAMP)
-        bgPaint.shader = shader
-
+        bgPaint.shader = LinearGradient(0f, layerHeight / 2f, layerWidth.toFloat(), layerHeight / 2f, bgColor, null, Shader.TileMode.CLAMP)
+        // 移除之前的背景图层
+        (parentView.getChildAt(0) as? AbsLayerView)?.let { bgLayer ->
+            if (bgLayer.getViewLayerType() == LayerType.LAYER_BACKGROUND) {
+                parentView.removeViewAt(0)
+            }
+        }
         parentView.addView(this, 0, layoutParams)
         layout(clipRect.left.toInt(), clipRect.top.toInt(), clipRect.right.toInt(), clipRect.bottom.toInt())
         stagingResizeInfo(clipRect, true)
+    }
+
+    fun updateBackgroundColor(bgColor: IntArray) {
+        this.bgColor = bgColor
+        this.imageBitmap = null
+        bgPaint.shader = LinearGradient(0f, height / 2f, width.toFloat(), height / 2f, bgColor, null, Shader.TileMode.CLAMP)
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -104,7 +153,7 @@ class BackgroundLayerView @JvmOverloads constructor(
     private fun drawBackgroundColor(canvas: Canvas) {
         bgColor ?: return
         pathRect.set(0f, 0f, width.toFloat(), height.toFloat())
-        if (isSelectedLayer && !isSaveMode) {
+        if (isSelectedLayer && !isTouched && !isSaveMode) {
             borderPath.reset()
             val radius = cornerRadius / scaleX
             borderPath.addRoundRect(pathRect, radius, radius, Path.Direction.CW)

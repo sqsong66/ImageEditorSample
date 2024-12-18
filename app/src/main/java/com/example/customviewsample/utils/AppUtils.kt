@@ -2,11 +2,13 @@ package com.example.customviewsample.utils
 
 import com.example.customviewsample.R
 import com.example.customviewsample.data.CanvasSize
+import com.example.customviewsample.data.MainMenuData
+import com.example.customviewsample.data.anno.MenuType
 
 fun getCanvasSizeList(): List<CanvasSize> {
     val canvasSizeList = mutableListOf<CanvasSize>()
     canvasSizeList.add(CanvasSize(width = 2016, height = 1512, iconRes = R.drawable.ic_picture_landscape, title = "Landscape", isTint = true))
-    canvasSizeList.add(CanvasSize(width = 1512, height = 4016, iconRes = R.drawable.ic_picture_portrait, title = "Portrait", isTint = true))
+    canvasSizeList.add(CanvasSize(width = 1512, height = 2016, iconRes = R.drawable.ic_picture_portrait, title = "Portrait", isTint = true))
     canvasSizeList.add(CanvasSize(width = 1512, height = 1512, iconRes = R.drawable.ic_picture, title = "Square", isTint = true))
     canvasSizeList.add(CanvasSize(width = 1080, height = 1920, iconRes = R.drawable.ic_size_instagram, title = "Instagram Story"))
     canvasSizeList.add(CanvasSize(width = 1080, height = 1080, iconRes = R.drawable.ic_size_instagram, title = "Instagram Post"))
@@ -47,4 +49,18 @@ fun getCanvasSizeList(): List<CanvasSize> {
     // Shopify Square
     canvasSizeList.add(CanvasSize(width = 2048, height = 2048, iconRes = R.drawable.pictogram_shopify, title = "Shopify Square"))
     return canvasSizeList
+}
+
+fun getMainMenu(): List<MainMenuData> {
+    val mainMenuList = mutableListOf<MainMenuData>()
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_LAYERS, menuName = "Layers", menuIcon = R.drawable.ic_layers))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    return mainMenuList
 }

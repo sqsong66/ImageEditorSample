@@ -30,4 +30,11 @@
         app:iconTint="?attr/colorOnSurface"
         app:showAsAction="always" />
 
+    <item
+        android:id="@+id/menu_color_background"
+        android:icon="@drawable/baseline_image_24"
+        android:title="Random Color Background"
+        app:iconTint="?attr/colorOnSurface"
+        app:showAsAction="never" />
+
 </menu>

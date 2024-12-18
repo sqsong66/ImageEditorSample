@@ -12,18 +12,23 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
+import com.example.customviewsample.common.helper.BitmapCacheHelper
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.layer.anno.LayerType
+import com.example.customviewsample.view.layer.data.ImageLayerInfo
+import com.example.customviewsample.view.layer.data.LayerSnapShot
+import com.sqsong.nativelib.NativeLib
 
 open class ImageLayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
+    override val layoutInfo: LayoutInfo = LayoutInfo(),
     override val cornerRadius: Float = dp2Px(6f),
     override val borderWidth: Float = dp2Px(1.5f),
     override val borderColor: Int = getThemeColor(context, com.google.android.material.R.attr.colorPrimary),
-) : AbsLayerView(context, attrs, defStyleAttr, cornerRadius, borderWidth, borderColor) {
+) : AbsLayerView(context, attrs, defStyleAttr, layoutInfo, cornerRadius, borderWidth, borderColor) {
 
     protected val imageMatrix = Matrix()
     protected var imageBitmap: Bitmap? = null
@@ -43,6 +48,16 @@ open class ImageLayerView @JvmOverloads constructor(
     }
 
     override fun getViewLayerType(): Int = LayerType.LAYER_IMAGE
+
+    override fun toLayerSnapshot(): LayerSnapShot? {
+        val cachePath = imageBitmap?.let {
+            BitmapCacheHelper.get().cacheBitmap(context, it, NativeLib.hasAlpha(it))
+        }
+        val layerInfo = ImageLayerInfo(imageCachePath = cachePath, scaleX = scaleX, scaleY = scaleY, rotation = rotation, translationX = translationX, translationY = translationY)
+        return LayerSnapShot(getViewLayerType(), layoutInfo.copy(), layerInfo)
+    }
+
+    override fun isEditMenuAvailable(): Boolean = true
 
     override fun isTouchedInLayer(x: Float, y: Float): Boolean {
         val bitmap = imageBitmap ?: return false
@@ -91,6 +106,12 @@ open class ImageLayerView @JvmOverloads constructor(
         super.onLayout(changed, left, top, right, bottom)
     }
 
+    override fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot) {
+        val layerInfo = snapshot.imageLayerInfo ?: return
+        val bitmap = BitmapCacheHelper.get().getCachedBitmap(context, layerInfo.imageCachePath)
+
+    }
+
     open fun onInitialLayout(parentView: ViewGroup, bitmap: Bitmap, clipRect: RectF) {
         this.imageBitmap = bitmap
         this.isSelectedLayer = true
@@ -108,12 +129,9 @@ open class ImageLayerView @JvmOverloads constructor(
         val layoutParams = LayoutParams(imageWidth.toInt(), imageHeight.toInt())
         // 添加控件到父布局中
         parentView.addView(this, layoutParams)
-        // 设置初始偏移量(实验性，这里将图片放到父控件画布的右下角)
-        val tx = 0f // (clipRect.width() - imageWidth) / 2
-        val ty = 0f // (clipRect.height() - imageHeight) / 2
 
-        val cx = clipRect.centerX() + tx
-        val cy = clipRect.centerY() + ty
+        val cx = clipRect.centerX()
+        val cy = clipRect.centerY()
         val left = (cx - imageWidth / 2f).toInt()
         val top = (cy - imageHeight / 2f).toInt()
         val right = (cx + imageWidth / 2f).toInt()
@@ -125,11 +143,10 @@ open class ImageLayerView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         imageBitmap?.let { drawImageBitmap(canvas, it) }
-        Log.d("songmao", "ImageLayerView onDraw")
     }
 
     protected fun drawImageBitmap(canvas: Canvas, bitmap: Bitmap) {
-        if (isSelectedLayer && !isSaveMode) {
+        if (isSelectedLayer && !isTouched && !isSaveMode) {
             pathRect.set(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
             imageMatrix.mapRect(pathRect)
             borderPath.reset()

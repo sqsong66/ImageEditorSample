@@ -8,46 +8,52 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.util.Log
 import android.util.Size
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
+import com.example.customviewsample.common.helper.BitmapCacheHelper
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.LayerRotation
 import com.example.customviewsample.view.layer.anno.LayerType
+import com.example.customviewsample.view.layer.data.LayerSnapShot
 import kotlin.math.abs
 
 abstract class AbsLayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
+    protected open val layoutInfo: LayoutInfo = LayoutInfo(),
     protected open val cornerRadius: Float = dp2Px(6f),
     protected open val borderWidth: Float = dp2Px(1.5f),
     protected open val borderColor: Int = getThemeColor(context, com.google.android.material.R.attr.colorPrimary),
 ) : View(context, attrs, defStyleAttr) {
 
+    var isTouched = false
+        private set
     var isSelectedLayer = false
     protected val pathRect = RectF()
     protected var isSaveMode = false
     protected val borderPath = Path()
 
-    private val resizeRect = RectF()
-    private val tempMatrix = Matrix()
-    private val layoutInfo = LayoutInfo()
-    private val stagingCenterPoint = PointF()
-    private val tempArray = FloatArray(2)
+    protected val resizeRect = RectF()
+    protected val tempMatrix = Matrix()
+
+    // protected val layoutInfo = LayoutInfo()
+    protected val stagingCenterPoint = PointF()
+    protected val tempArray = FloatArray(2)
 
     // 临时保存的中心点，在进行尺寸变换动画前临时存储，在动画过程中中心点的计算基于该中心点
-    private var tempCenterPoint = PointF()
+    protected var tempCenterPoint = PointF()
 
     // 临时保存的尺寸大小，在进行尺寸变换动画前临时存储，在动画过程中尺寸的计算基于改尺寸
-    private var tempSize = Size(0, 0)
+    protected var tempSize = Size(0, 0)
 
     // 父控件尺寸发生变化时或触摸过后记录子控件的尺寸，在进行尺寸切换时进行动画过渡使用
-    private var resizeSize = Size(0, 0)
+    protected var resizeSize = Size(0, 0)
 
     // 缓存子控件的缩放、旋转信息，方便在移动时进行各种变换操作，变换操作基于缓存的数值
     private var layerCacheInfo = LayerTempCacheInfo()
@@ -72,6 +78,10 @@ abstract class AbsLayerView @JvmOverloads constructor(
 
     @LayerType
     abstract fun getViewLayerType(): Int
+
+    abstract fun toLayerSnapshot(): LayerSnapShot?
+
+    abstract fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot)
 
     protected open fun detectCenterCoordinateAndRotation(): Boolean = true
 
@@ -160,7 +170,6 @@ abstract class AbsLayerView @JvmOverloads constructor(
                 LayerRotation.ROTATION_0 -> {
                     if (abs(angle) < ROTATION_THRESHOLD) destAngle = 0f - rotation
                     if (preRotation != layerRotation) onVibrate()
-                    Log.d("sqsong", "angle: $angle, destAngle: $destAngle, rotation: ${rotation + destAngle}")
                 }
 
                 LayerRotation.ROTATION_45 -> {
@@ -202,7 +211,6 @@ abstract class AbsLayerView @JvmOverloads constructor(
         } else {
             rotation += angle
         }
-        Log.w("sqsong", "rotateLayer, rotation: $rotation")
         return layerRotation
     }
 
@@ -286,7 +294,7 @@ abstract class AbsLayerView @JvmOverloads constructor(
      * @param destScale 目标缩放比例(最终缩放比例)
      * @param factor 变换因子(0f ~ 1f)
      */
-    open fun transformLayerByResize(clipRect: RectF, destScale: Float, factor: Float) {
+    open fun transformLayerByResize(clipRect: RectF, destScale: Float, destBgScale: Float, factor: Float) {
         // 计算变换大小
         val diffWidth = resizeSize.width * destScale - tempSize.width
         val diffHeight = resizeSize.height * destScale - tempSize.height
@@ -405,4 +413,31 @@ abstract class AbsLayerView @JvmOverloads constructor(
         }
     }
 
+    fun updateTouchState(isTouched: Boolean) {
+        this.isTouched = isTouched
+        invalidate()
+    }
+
+    open fun isEditMenuAvailable(): Boolean = false
+
+    companion object {
+
+        fun crateLayerViewBySnapshot(context: Context, snapshot: LayerSnapShot): AbsLayerView? {
+            return when (snapshot.viewLayerType) {
+                LayerType.LAYER_IMAGE -> {
+                    val layerInfo = snapshot.imageLayerInfo ?: return null
+                    val bitmap = BitmapCacheHelper.get().getCachedBitmap(context, layerInfo.imageCachePath) ?: return null
+
+                    null
+                }
+
+                LayerType.LAYER_BACKGROUND -> {
+                    null
+                }
+
+                else -> null
+            }
+        }
+
+    }
 }
