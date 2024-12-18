@@ -49,12 +49,24 @@ open class ImageLayerView @JvmOverloads constructor(
 
     override fun getViewLayerType(): Int = LayerType.LAYER_IMAGE
 
-    override fun toLayerSnapshot(): LayerSnapShot? {
+    override fun toLayerSnapshot(clipRect: RectF): LayerSnapShot? {
         val cachePath = imageBitmap?.let {
             BitmapCacheHelper.get().cacheBitmap(context, it, NativeLib.hasAlpha(it))
         }
-        val layerInfo = ImageLayerInfo(imageCachePath = cachePath, scaleX = scaleX, scaleY = scaleY, rotation = rotation, translationX = translationX, translationY = translationY)
+        val layerInfo = ImageLayerInfo(imageCachePath = cachePath, layerWidth = width, layerHeight = height, scaleX = scaleX, scaleY = scaleY, rotation = rotation, translationX = translationX, translationY = translationY)
         return LayerSnapShot(getViewLayerType(), layoutInfo.copy(), layerInfo)
+    }
+
+    override fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot, clipRect: RectF) {
+        val layerInfo = snapshot.imageLayerInfo ?: return
+        val bitmap = BitmapCacheHelper.get().getCachedBitmap(context, layerInfo.imageCachePath) ?: return
+        this.imageBitmap = bitmap
+        val layoutParams = LayoutParams(layerInfo.layerWidth, layerInfo.layerHeight)
+        viewGroup.addView(this, layoutParams)
+        onUpdateLayout(clipRect)
+        scaleX = layerInfo.scaleX
+        scaleY = layerInfo.scaleY
+        rotation = layerInfo.rotation
     }
 
     override fun isEditMenuAvailable(): Boolean = true
@@ -104,12 +116,6 @@ open class ImageLayerView @JvmOverloads constructor(
         resetLayerPivot()
         updateImageMatrix()
         super.onLayout(changed, left, top, right, bottom)
-    }
-
-    override fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot) {
-        val layerInfo = snapshot.imageLayerInfo ?: return
-        val bitmap = BitmapCacheHelper.get().getCachedBitmap(context, layerInfo.imageCachePath)
-
     }
 
     open fun onInitialLayout(parentView: ViewGroup, bitmap: Bitmap, clipRect: RectF) {

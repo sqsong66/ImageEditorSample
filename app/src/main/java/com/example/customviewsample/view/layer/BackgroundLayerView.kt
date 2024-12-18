@@ -9,7 +9,9 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
+import android.util.Log
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams
 import com.example.customviewsample.common.helper.BitmapCacheHelper
 import com.example.customviewsample.view.layer.anno.LayerType
 import com.example.customviewsample.view.layer.data.BackgroundLayerInfo
@@ -31,6 +33,10 @@ class BackgroundLayerView @JvmOverloads constructor(
         }
     }
 
+    init {
+        Log.e("songmao", "BackgroundLayerView init: $layoutInfo")
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         bgColor?.let { color ->
@@ -40,12 +46,36 @@ class BackgroundLayerView @JvmOverloads constructor(
 
     override fun getViewLayerType(): Int = LayerType.LAYER_BACKGROUND
 
-    override fun toLayerSnapshot(): LayerSnapShot {
+    override fun toLayerSnapshot(clipRect: RectF): LayerSnapShot {
         val cachePath = imageBitmap?.let {
             BitmapCacheHelper.get().cacheBitmap(context, it, NativeLib.hasAlpha(it))
         }
-        val layerInfo = BackgroundLayerInfo(bgCachePath = cachePath, bgColor = bgColor?.clone(), scaleX = scaleX, scaleY = scaleY, rotation = rotation, translationX = translationX, translationY = translationY)
-        return LayerSnapShot(getViewLayerType(), layoutInfo.copy(), backgroundLayerInfo = layerInfo)
+        val layoutInfo = LayoutInfo()
+        updateChildLayoutInfo(layoutInfo, clipRect, this)
+        Log.w("songmao", "BackgroundLayerView toLayerSnapshot: $layoutInfo")
+        val layerInfo = BackgroundLayerInfo(bgCachePath = cachePath, bgColor = bgColor?.clone(), layerWidth = width, layerHeight = height, scaleX = scaleX, scaleY = scaleY, rotation = rotation, translationX = translationX, translationY = translationY)
+        return LayerSnapShot(getViewLayerType(), layoutInfo, backgroundLayerInfo = layerInfo)
+    }
+
+    override fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot, clipRect: RectF) {
+        val layerInfo = snapshot.backgroundLayerInfo ?: return
+        val bitmap = BitmapCacheHelper.get().getCachedBitmap(context, layerInfo.bgCachePath)
+        val bgColor = layerInfo.bgColor
+        if (bitmap == null && bgColor == null) return
+        if (bitmap != null) {
+            this.bgColor = null
+            this.imageBitmap = bitmap
+        } else {
+            this.bgColor = bgColor
+            this.imageBitmap = null
+            bgPaint.shader = LinearGradient(0f, height / 2f, width.toFloat(), height / 2f, bgColor!!, null, Shader.TileMode.CLAMP)
+        }
+        val layoutParams = LayoutParams(layerInfo.layerWidth, layerInfo.layerHeight)
+        viewGroup.addView(this, layoutParams)
+        onUpdateLayout(clipRect)
+        scaleX = layerInfo.scaleX
+        scaleY = layerInfo.scaleY
+        rotation = layerInfo.rotation
     }
 
     override fun isEditMenuAvailable(): Boolean = false

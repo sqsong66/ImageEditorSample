@@ -31,6 +31,7 @@ import com.example.customviewsample.view.AlphaGridDrawHelper
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.GestureMode
 import com.example.customviewsample.view.layer.anno.LayerRotation
+import com.example.customviewsample.view.layer.anno.LayerType
 import com.example.customviewsample.view.layer.data.ImageLayerSnapshot
 import com.example.customviewsample.view.layer.listener.ImageEditorActionListener
 import com.example.customviewsample.view.layer.manager.UndoRedoManager
@@ -63,17 +64,18 @@ open class ImageEditorView @JvmOverloads constructor(
 
     private var lastX = 0f
     private var lastY = 0f
-    private var borderWidth = 0f
     private var borderColor = 0
+    private var borderWidth = 0f
     private var cornerRadius = 0f
     private val clipPath = Path()
+    private val tempRect = RectF()
     private val clipRect = RectF()
     private var isSaveMode = false
     private var touchDownMillis = 0L
     private val preClipRect = RectF()
-    private val touchDownPoint = PointF()
-    private val tempRect = RectF()
     private val tempMatrix = Matrix()
+    private val touchDownPoint = PointF()
+    private val currentLayerCenter = PointF()
 
     // 尺寸变换时临时存储矩形框
     private val resizeRect = RectF()
@@ -157,7 +159,7 @@ open class ImageEditorView @JvmOverloads constructor(
     }
 
     override fun dispatchDraw(canvas: Canvas) {
-        Log.i("songmao", "ImageEditorView dispatchDraw")
+        // Log.i("songmao", "ImageEditorView dispatchDraw")
         if (isSaveMode) {
             super.dispatchDraw(canvas)
         } else {
@@ -292,7 +294,7 @@ open class ImageEditorView @JvmOverloads constructor(
 
     private fun saveLayerSnapshot() {
         flow {
-            val snapshots = children.mapNotNull { (it as AbsLayerView).toLayerSnapshot() }.toList()
+            val snapshots = children.mapNotNull { (it as AbsLayerView).toLayerSnapshot(clipRect) }.toList()
             val layerSnapshot = ImageLayerSnapshot(canvasSize.copy(), RectF(clipRect), snapshots)
             emit(layerSnapshot)
         }.flowOn(Dispatchers.IO)
@@ -336,6 +338,7 @@ open class ImageEditorView @JvmOverloads constructor(
             if (isEditMenuAvailable()) {
                 actionListener?.hideLayerEditMenu()
             }
+            currentLayerCenter.set(getLayerCenterPoint())
         }
         lastX = event.x
         lastY = event.y
@@ -362,28 +365,29 @@ open class ImageEditorView @JvmOverloads constructor(
     }
 
     private fun onUp(event: MotionEvent) {
+        // 判断是否需要保存快照
+        currentLayerView?.let { layerView ->
+            val newCenter = layerView.getLayerCenterPoint()
+            val isLayerMoved = calculateDistance(currentLayerCenter.x, currentLayerCenter.y, newCenter.x, newCenter.y) > MIN_MOVE_DISTANCE
+            if (isLayerMoved) {
+                saveLayerSnapshot()
+            }
+        }
         val distance = calculateDistance(touchDownPoint.x, touchDownPoint.y, event.x, event.y)
         val isMoved = distance > MIN_MOVE_DISTANCE
         val isClickTime = System.currentTimeMillis() - touchDownMillis < MAX_CLICK_DURATION
-        if (isClickTime && !isMoved) {
-            processClickEvent(event.x, event.y)
-        }
+        if (isClickTime && !isMoved) processClickEvent(event.x, event.y)
         stagingChildResizeInfo(updateLayoutInfo = true)
         currentLayerView?.apply {
             resetLayerPivot()
             updateTouchState(false)
-            if (isEditMenuAvailable()) {
-                showLayerEditMenu(this)
-            }
+            if (isEditMenuAvailable()) showLayerEditMenu(this)
         } ?: run {
             actionListener?.hideLayerEditMenu()
         }
         coordinateLoc = CoordinateLocation.COORDINATE_NONE
         layerRotation = LayerRotation.ROTATION_NONE
         invalidate()
-        if (isMoved && currentLayerView != null) {
-            saveLayerSnapshot()
-        }
     }
 
     private fun processMoveEvent(absLayer: AbsLayerView, event: MotionEvent) {
@@ -520,7 +524,7 @@ open class ImageEditorView @JvmOverloads constructor(
         saveLayerSnapshot()
     }
 
-    fun addBackgroundLayer(bgColor: IntArray) {
+    private fun addBackgroundLayer(bgColor: IntArray) {
         BackgroundLayerView(context).apply {
             onInitialLayout(this@ImageEditorView, bgColor, clipRect)
             currentLayerView?.isSelectedLayer = false
@@ -531,10 +535,13 @@ open class ImageEditorView @JvmOverloads constructor(
     }
 
     fun updateBackgroundLayerColor(bgColor: IntArray) {
-        (getChildAt(0) as? BackgroundLayerView)?.updateBackgroundColor(bgColor) ?: run {
+        val bgLayer = getChildAt(0) as? BackgroundLayerView
+        if (bgLayer != null) {
+            bgLayer.updateBackgroundColor(bgColor)
+            saveLayerSnapshot()
+        } else {
             addBackgroundLayer(bgColor)
         }
-        saveLayerSnapshot()
     }
 
     fun updateCanvasSize(canvasSize: CanvasSize) {
@@ -581,6 +588,7 @@ open class ImageEditorView @JvmOverloads constructor(
             removeView(it)
             currentLayerView = null
             actionListener?.hideLayerEditMenu()
+            saveLayerSnapshot()
         }
     }
 
@@ -589,25 +597,37 @@ open class ImageEditorView @JvmOverloads constructor(
         restoreSnapshot(snapshot)
     }
 
+    fun redo() {
+        val snapshot = undoRedoManager.redo() ?: return
+        restoreSnapshot(snapshot)
+    }
+
     private fun restoreSnapshot(snapshot: ImageLayerSnapshot) {
-        /*clearLayers()
+        clearLayers()
+        actionListener?.hideLayerEditMenu()
+        currentLayerView = null
         canvasSize = snapshot.canvasSize
-        clipRect.set(snapshot.clipRect)
+        clipRect.set(calculateClipRect(width, height))
         snapshot.layerList.forEach { layerSnapshot ->
             when (layerSnapshot.viewLayerType) {
-                AbsLayerView.LAYER_TYPE_IMAGE -> {
-                    ImageLayerView(context).apply {
-                        onRestoreLayer(this@ImageEditorView, layerSnapshot)
+                LayerType.LAYER_IMAGE -> {
+                    ImageLayerView(context, layoutInfo = layerSnapshot.layoutInfo).apply {
+                        restoreLayerFromSnapshot(this@ImageEditorView, layerSnapshot, clipRect)
                     }
                 }
 
-                AbsLayerView.LAYER_TYPE_BACKGROUND -> {
-                    BackgroundLayerView(context).apply {
-                        onRestoreLayer(this@ImageEditorView, layerSnapshot)
+                LayerType.LAYER_BACKGROUND -> {
+                    BackgroundLayerView(context, layoutInfo = layerSnapshot.layoutInfo).apply {
+                        restoreLayerFromSnapshot(this@ImageEditorView, layerSnapshot, clipRect)
                     }
+                }
+
+                else -> {
+
                 }
             }
         }
-        requestLayout()*/
+        requestLayout()
+        actionListener?.onUndoRedoStateChanged(undoRedoManager.canUndo(), undoRedoManager.canRedo())
     }
 }

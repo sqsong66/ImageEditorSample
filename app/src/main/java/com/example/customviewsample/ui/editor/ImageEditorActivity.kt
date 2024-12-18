@@ -63,8 +63,8 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
 
     private fun initLayout() {
         initMenuLayout()
-        loadGradientBackgrounds()
-        binding.root.post { initRedoUndoLayout() }
+        // loadGradientBackgrounds()
+        initRedoUndoLayout()
     }
 
     private fun initRedoUndoLayout() {
@@ -195,8 +195,8 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
         }
         binding.deleteIv.setOnClickListener { binding.imageEditorView.removeCurrentLayer() }
         binding.moreIv.setOnClickListener { }
-        binding.undoIv.setOnClickListener { }
-        binding.redoIv.setOnClickListener { }
+        binding.undoIv.setOnClickListener { binding.imageEditorView.undo() }
+        binding.redoIv.setOnClickListener { binding.imageEditorView.redo() }
     }
 
     override fun onWindowInsetsApplied(insets: Insets) {

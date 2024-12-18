@@ -27,6 +27,8 @@ data class LayerSnapShot(
 data class BackgroundLayerInfo(
     val bgCachePath: String?,
     val bgColor: IntArray?,
+    val layerWidth: Int = 0,
+    val layerHeight: Int = 0,
     val scaleX: Float = 1f,
     val scaleY: Float = 1f,
     val rotation: Float = 0f,
@@ -58,6 +60,8 @@ data class BackgroundLayerInfo(
 @Parcelize
 data class ImageLayerInfo(
     val imageCachePath: String?,
+    val layerWidth: Int = 0,
+    val layerHeight: Int = 0,
     val scaleX: Float = 1f,
     val scaleY: Float = 1f,
     val rotation: Float = 0f,

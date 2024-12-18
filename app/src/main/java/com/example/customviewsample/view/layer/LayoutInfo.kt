@@ -9,4 +9,8 @@ data class LayoutInfo(
     var heightRatio: Float = 1f,
     var centerXRatio: Float = 0.5f,
     var centerYRatio: Float = 0.5f
-) : Parcelable
+) : Parcelable {
+    override fun toString(): String {
+        return "LayoutInfo(widthRatio=$widthRatio, heightRatio=$heightRatio, centerXRatio=$centerXRatio, centerYRatio=$centerYRatio), ${super.toString()}"
+    }
+}

@@ -13,7 +13,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
-import com.example.customviewsample.common.helper.BitmapCacheHelper
 import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
@@ -41,8 +40,6 @@ abstract class AbsLayerView @JvmOverloads constructor(
 
     protected val resizeRect = RectF()
     protected val tempMatrix = Matrix()
-
-    // protected val layoutInfo = LayoutInfo()
     protected val stagingCenterPoint = PointF()
     protected val tempArray = FloatArray(2)
 
@@ -79,9 +76,9 @@ abstract class AbsLayerView @JvmOverloads constructor(
     @LayerType
     abstract fun getViewLayerType(): Int
 
-    abstract fun toLayerSnapshot(): LayerSnapShot?
+    abstract fun toLayerSnapshot(clipRect: RectF): LayerSnapShot?
 
-    abstract fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot)
+    abstract fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot, clipRect: RectF)
 
     protected open fun detectCenterCoordinateAndRotation(): Boolean = true
 
@@ -265,6 +262,27 @@ abstract class AbsLayerView @JvmOverloads constructor(
     }
 
     /**
+     * 根据布局信息更新子控件的布局位置
+     * @param clipRect 父控件画布区域
+     */
+    fun onUpdateLayout(clipRect: RectF) {
+        // 根据缩放比例重新计算控件的宽高
+        val newWidth = clipRect.width() * layoutInfo.widthRatio
+        val newHeight = clipRect.height() * layoutInfo.heightRatio
+        // 根据布局信息中的中心点比例来计算控件的中心点位置，然后进一步计算出控件的摆放位置
+        val cx = clipRect.left + clipRect.width() * layoutInfo.centerXRatio
+        val cy = clipRect.top + clipRect.height() * layoutInfo.centerYRatio
+        val left = (cx - newWidth / 2f).toInt()
+        val top = (cy - newHeight / 2f).toInt()
+        val right = (cx + newWidth / 2f).toInt()
+        val bottom = (cy + newHeight / 2f).toInt()
+        layout(left, top, right, bottom)
+        // 重置位移
+        translationX = 0f
+        translationY = 0f
+    }
+
+    /**
      * 父控件尺寸发生变化时或触摸过后，保存子控件的尺寸大小以及中心点以及位置信息，方便在进行尺寸切换时进行动画过渡。
      * @param clipRect 父控件画布区域
      * @param updateLayoutInfo 是否更新布局信息
@@ -320,27 +338,6 @@ abstract class AbsLayerView @JvmOverloads constructor(
         val tcy = tempCenterPoint.y + (cy - tempCenterPoint.y) * factor
         layoutInfo.centerXRatio = (tcx - clipRect.left) / clipRect.width()
         layoutInfo.centerYRatio = (tcy - clipRect.top) / clipRect.height()
-    }
-
-    /**
-     * 根据布局信息更新子控件的布局位置
-     * @param clipRect 父控件画布区域
-     */
-    fun onUpdateLayout(clipRect: RectF) {
-        // 根据缩放比例重新计算控件的宽高
-        val newWidth = clipRect.width() * layoutInfo.widthRatio
-        val newHeight = clipRect.height() * layoutInfo.heightRatio
-        // 根据布局信息中的中心点比例来计算控件的中心点位置，然后进一步计算出控件的摆放位置
-        val cx = clipRect.left + clipRect.width() * layoutInfo.centerXRatio
-        val cy = clipRect.top + clipRect.height() * layoutInfo.centerYRatio
-        val left = (cx - newWidth / 2f).toInt()
-        val top = (cy - newHeight / 2f).toInt()
-        val right = (cx + newWidth / 2f).toInt()
-        val bottom = (cy + newHeight / 2f).toInt()
-        layout(left, top, right, bottom)
-        // 重置位移
-        translationX = 0f
-        translationY = 0f
     }
 
     /**
@@ -420,24 +417,4 @@ abstract class AbsLayerView @JvmOverloads constructor(
 
     open fun isEditMenuAvailable(): Boolean = false
 
-    companion object {
-
-        fun crateLayerViewBySnapshot(context: Context, snapshot: LayerSnapShot): AbsLayerView? {
-            return when (snapshot.viewLayerType) {
-                LayerType.LAYER_IMAGE -> {
-                    val layerInfo = snapshot.imageLayerInfo ?: return null
-                    val bitmap = BitmapCacheHelper.get().getCachedBitmap(context, layerInfo.imageCachePath) ?: return null
-
-                    null
-                }
-
-                LayerType.LAYER_BACKGROUND -> {
-                    null
-                }
-
-                else -> null
-            }
-        }
-
-    }
 }
