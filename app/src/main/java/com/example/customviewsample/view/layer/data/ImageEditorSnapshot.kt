@@ -8,7 +8,7 @@ import com.example.customviewsample.view.layer.anno.LayerType
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-data class ImageLayerSnapshot(
+data class ImageEditorSnapshot(
     val canvasSize: CanvasSize,
     val clipRect: RectF,
     val layerList: List<LayerSnapShot>,
@@ -32,8 +32,6 @@ data class BackgroundLayerInfo(
     val scaleX: Float = 1f,
     val scaleY: Float = 1f,
     val rotation: Float = 0f,
-    val translationX: Float = 0f,
-    val translationY: Float = 0f,
 ) : Parcelable {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -65,7 +63,5 @@ data class ImageLayerInfo(
     val scaleX: Float = 1f,
     val scaleY: Float = 1f,
     val rotation: Float = 0f,
-    val translationX: Float = 0f,
-    val translationY: Float = 0f,
     val isLightOn: Boolean = false,
 ) : Parcelable

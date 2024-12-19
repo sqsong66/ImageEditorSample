@@ -18,6 +18,7 @@ import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.layer.anno.CoordinateLocation
 import com.example.customviewsample.view.layer.anno.LayerRotation
 import com.example.customviewsample.view.layer.anno.LayerType
+import com.example.customviewsample.view.layer.data.LayerPreviewData
 import com.example.customviewsample.view.layer.data.LayerSnapShot
 import kotlin.math.abs
 
@@ -73,12 +74,18 @@ abstract class AbsLayerView @JvmOverloads constructor(
         }
     }
 
+    init {
+        id = generateViewId()
+    }
+
     @LayerType
     abstract fun getViewLayerType(): Int
 
     abstract fun toLayerSnapshot(clipRect: RectF): LayerSnapShot?
 
     abstract fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot, clipRect: RectF)
+
+    abstract fun toLayerPreview(): LayerPreviewData
 
     protected open fun detectCenterCoordinateAndRotation(): Boolean = true
 

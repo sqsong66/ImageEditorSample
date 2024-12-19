@@ -54,8 +54,8 @@ fun getCanvasSizeList(): List<CanvasSize> {
 fun getMainMenu(): List<MainMenuData> {
     val mainMenuList = mutableListOf<MainMenuData>()
     mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_LAYERS, menuName = "Layers", menuIcon = R.drawable.ic_layers))
-    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
-    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_BACKGROUND, menuName = "Background", menuIcon = R.drawable.ic_background))
+    mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_TEXT, menuName = "Text", menuIcon = R.drawable.ic_text))
     mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
     mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))
     mainMenuList.add(MainMenuData(menuType = MenuType.MENU_MAIN_RESIZE, menuName = "Resize", menuIcon = R.drawable.ic_crop))

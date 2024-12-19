@@ -18,8 +18,8 @@ class EditorMainMenuAdapter(
 
     override fun inflateData(binding: ItemEditorMainMenuBinding, data: MainMenuData, position: Int) {
         (binding.root.layoutParams as MarginLayoutParams).apply {
-            marginStart = if (position == 0) dp2Px<Int>(16) else dp2Px<Int>(4)
-            marginEnd = if (position == itemCount - 1) dp2Px<Int>(16) else dp2Px<Int>(4)
+            marginStart = if (position == 0) dp2Px<Int>(8) else dp2Px<Int>(2)
+            marginEnd = if (position == itemCount - 1) dp2Px<Int>(8) else dp2Px<Int>(2)
             binding.root.layoutParams = this
         }
         binding.root.setRippleBackgroundColor(allCornerRadius = dp2Px(8))

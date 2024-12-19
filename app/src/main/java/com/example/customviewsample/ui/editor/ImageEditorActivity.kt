@@ -20,14 +20,18 @@ import com.example.customviewsample.common.ext.measuredSize
 import com.example.customviewsample.common.ext.setEnableState
 import com.example.customviewsample.common.ext.setMaterialShapeBackgroundDrawable
 import com.example.customviewsample.common.ext.setRippleBackgroundColor
+import com.example.customviewsample.data.CanvasSize
 import com.example.customviewsample.data.GradientData
 import com.example.customviewsample.data.MainMenuData
 import com.example.customviewsample.data.anno.MenuType
 import com.example.customviewsample.databinding.ActivityImageEditorBinding
 import com.example.customviewsample.ui.editor.adapter.EditorMainMenuAdapter
 import com.example.customviewsample.ui.editor.menus.CanvasSizeMenuLayout
+import com.example.customviewsample.ui.editor.menus.LayerListMenuLayout
 import com.example.customviewsample.utils.decodeBitmapByGlide
 import com.example.customviewsample.utils.dp2Px
+import com.example.customviewsample.view.layer.anno.LayerChangedMode
+import com.example.customviewsample.view.layer.data.LayerPreviewData
 import com.example.customviewsample.view.layer.listener.ImageEditorActionListener
 import com.google.android.material.shape.CornerFamily
 import com.google.gson.Gson
@@ -47,6 +51,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
     private var addImageType = 0 // 0-添加图片 1-添加背景
     private var bottomInsets = 0
     private var hideAnimator: ViewPropertyAnimator? = null
+    private var layerListMenuLayout: LayerListMenuLayout? = null
     private var backgroundMenuLayout: CanvasSizeMenuLayout? = null
 
     private val pickMedia = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -63,7 +68,6 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
 
     private fun initLayout() {
         initMenuLayout()
-        // loadGradientBackgrounds()
         initRedoUndoLayout()
     }
 
@@ -98,6 +102,112 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
             backgroundColorResId = com.google.android.material.R.attr.colorSurfaceContainerLow
         )
         binding.menuRecycler.adapter = mainMenuAdapter
+    }
+
+    override fun initListeners() {
+        binding.imageEditorView.setImageEditorActionListener(this)
+        binding.previewIv.setOnClickListener { binding.previewIv.visibility = View.GONE }
+        binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.menu_add_background -> {
+                    addImageType = 1
+                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    true
+                }
+
+                R.id.menu_add_image -> {
+                    addImageType = 0
+                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    true
+                }
+
+                R.id.clear_image -> {
+                    binding.imageEditorView.clearLayers()
+                    true
+                }
+
+                R.id.save_image -> {
+                    val bitmap = binding.imageEditorView.getEditorBitmap()
+                    Log.d("sqsong", "Bitmap size: ${bitmap.width}x${bitmap.height}")
+                    binding.previewIv.setImageBitmap(bitmap)
+                    binding.previewIv.visibility = View.VISIBLE
+                    true
+                }
+
+                R.id.menu_color_background -> {
+                    loadGradientBackgrounds()
+                    true
+                }
+
+                else -> false
+            }
+        }
+        binding.deleteIv.setOnClickListener { binding.imageEditorView.removeCurrentLayer() }
+        binding.moreIv.setOnClickListener { }
+        binding.undoIv.setOnClickListener { binding.imageEditorView.undo() }
+        binding.redoIv.setOnClickListener { binding.imageEditorView.redo() }
+    }
+
+    override fun onWindowInsetsApplied(insets: Insets) {
+        // Log.d("sqsong", "onWindowInsetsApplied: $insets, bottomInsets: $bottomInsets")
+        // 不可以设置binding.root(CoordinatorLayout).updatePadding top, 否则Behavior布局中刷新Layout时会导致Behavior异常收缩
+        binding.contentLayout.updatePadding(top = insets.top)
+        binding.mainMenuLayout.updatePadding(bottom = insets.bottom)
+        bottomInsets = insets.bottom
+    }
+
+    private fun loadImageBitmap(uri: Uri) {
+        flow {
+            decodeBitmapByGlide(this@ImageEditorActivity, uri, 2048)?.let { emit(it) }
+        }.flowOn(Dispatchers.IO)
+            .catch { Log.e("sqsong", "loadImageBitmap error: $it") }
+            .onEach { bitmap ->
+                if (addImageType == 0) {
+                    binding.imageEditorView.addImageLayer(bitmap)
+                } else {
+                    binding.imageEditorView.addBackgroundLayer(bitmap)
+                }
+            }
+            .launchIn(lifecycleScope)
+    }
+
+    override fun onHandleBackPress() {
+        if (backgroundMenuLayout?.hideMenu() == true) {
+            return
+        }
+        if (layerListMenuLayout?.hideMenu() == true) {
+            return
+        }
+        super.onHandleBackPress()
+    }
+
+    private fun onMainMenuClick(menuData: MainMenuData) {
+        when (menuData.menuType) {
+            MenuType.MENU_MAIN_LAYERS -> {
+                showLayerListMenu()
+            }
+
+            MenuType.MENU_MAIN_RESIZE -> {
+                showBackgroundMenu()
+            }
+        }
+    }
+
+    private fun showLayerListMenu() {
+        layerListMenuLayout = LayerListMenuLayout(
+            binding.main, bottomInsets,
+            layerPreviewList = binding.imageEditorView.getLayerPreviewList(),
+            onSwapLayer = binding.imageEditorView::swapLayerOrder,
+            onMenuSlide = ::onBottomSheetMenuSlide,
+            onMenuSlideDone = ::onBottomSheetMenuSlideDone,
+            removeCallback = {
+                layerListMenuLayout = null
+            }
+        )
+        binding.root.doOnLayout {
+            layerListMenuLayout?.setBehaviorState(EditMenuBottomSheetBehavior.STATE_EXPANDED)
+        }
     }
 
     private fun showBackgroundMenu() {
@@ -154,93 +264,6 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
         }
     }
 
-    override fun initListeners() {
-        binding.imageEditorView.setImageEditorActionListener(this)
-        binding.previewIv.setOnClickListener { binding.previewIv.visibility = View.GONE }
-        binding.toolbar.setNavigationOnClickListener { finish() }
-        binding.toolbar.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.menu_add_background -> {
-                    addImageType = 1
-                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    true
-                }
-
-                R.id.menu_add_image -> {
-                    addImageType = 0
-                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    true
-                }
-
-                R.id.clear_image -> {
-                    binding.imageEditorView.clearLayers()
-                    true
-                }
-
-                R.id.save_image -> {
-                    val bitmap = binding.imageEditorView.getEditorBitmap()
-                    Log.d("sqsong", "Bitmap size: ${bitmap.width}x${bitmap.height}")
-                    binding.previewIv.setImageBitmap(bitmap)
-                    binding.previewIv.visibility = View.VISIBLE
-                    true
-                }
-
-                R.id.menu_color_background -> {
-                    loadGradientBackgrounds()
-                    true
-                }
-
-                else -> false
-            }
-        }
-        binding.deleteIv.setOnClickListener { binding.imageEditorView.removeCurrentLayer() }
-        binding.moreIv.setOnClickListener { }
-        binding.undoIv.setOnClickListener { binding.imageEditorView.undo() }
-        binding.redoIv.setOnClickListener { binding.imageEditorView.redo() }
-    }
-
-    override fun onWindowInsetsApplied(insets: Insets) {
-        // Log.d("sqsong", "onWindowInsetsApplied: $insets, bottomInsets: $bottomInsets")
-        // 不可以设置binding.root(CoordinatorLayout).updatePadding top, 否则Behavior布局中刷新Layout时会导致Behavior异常收缩
-        binding.contentLayout.updatePadding(top = insets.top)
-        binding.mainMenuLayout.updatePadding(bottom = insets.bottom)
-        bottomInsets = insets.bottom
-    }
-
-    private fun onMainMenuClick(menuData: MainMenuData) {
-        when (menuData.menuType) {
-            MenuType.MENU_MAIN_LAYERS -> {
-
-            }
-
-            MenuType.MENU_MAIN_RESIZE -> {
-                showBackgroundMenu()
-            }
-        }
-    }
-
-    private fun loadImageBitmap(uri: Uri) {
-        flow {
-            decodeBitmapByGlide(this@ImageEditorActivity, uri, 2048)?.let { emit(it) }
-        }.flowOn(Dispatchers.IO)
-            .catch { Log.e("sqsong", "loadImageBitmap error: $it") }
-            .onEach { bitmap ->
-                if (addImageType == 0) {
-                    binding.imageEditorView.addImageLayer(bitmap)
-                } else {
-                    binding.imageEditorView.addBackgroundLayer(bitmap)
-                }
-            }
-            .launchIn(lifecycleScope)
-    }
-
-    override fun onHandleBackPress() {
-        if (backgroundMenuLayout?.hideMenu() == true) {
-            return
-        }
-        super.onHandleBackPress()
-    }
-
     override fun onShowLayerEditMenu(x: Float, y: Float) {
         val shouldAnim = binding.editLayerLayout.visibility == View.GONE
         binding.editLayerLayout.alpha = 0f
@@ -248,7 +271,7 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
         binding.editLayerLayout.scaleY = 0.8f
         binding.editLayerLayout.visibility = View.VISIBLE
         val layoutSize = binding.editLayerLayout.measuredSize()
-        Log.d("sqsong", "onShowLayerEditMenu: $x, $y, layoutSize: $layoutSize")
+        // Log.d("sqsong", "onShowLayerEditMenu: $x, $y, layoutSize: $layoutSize")
         var top = y.toInt() - layoutSize.height
         if (top < 0) top = 0
         val bottom = binding.imageEditorView.height - layoutSize.height
@@ -289,9 +312,20 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
             }.apply { start() }
     }
 
-    override fun onUndoRedoStateChanged(canUndo: Boolean, canRedo: Boolean) {
+    override fun onUndoRedoStateChanged(canUndo: Boolean, canRedo: Boolean, isReset: Boolean) {
         binding.undoIv.setEnableState(canUndo)
         binding.redoIv.setEnableState(canRedo)
+        if (isReset) {
+            layerListMenuLayout?.updateLayerList(binding.imageEditorView.getLayerPreviewList())
+        }
+    }
+
+    override fun onCanvasSizeChanged(newCanvasSize: CanvasSize) {
+        backgroundMenuLayout?.updateCanvasSizeIndex(newCanvasSize)
+    }
+
+    override fun onAddOrUpdateLayer(@LayerChangedMode changedMode: Int, layerPreviewData: LayerPreviewData) {
+        layerListMenuLayout?.onAddOrUpdateLayer(changedMode, layerPreviewData)
     }
 
 }

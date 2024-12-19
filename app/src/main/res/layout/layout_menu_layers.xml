@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="280dp"
+    android:layout_height="240dp"
     android:background="@drawable/rounded_top_corners_background"
     android:elevation="8dp"
     app:behavior_peekHeight="280dp"
@@ -36,35 +36,23 @@
             android:background="?attr/colorSurfaceContainerHighest"
             android:paddingHorizontal="8dp"
             android:paddingVertical="4dp"
-            android:text="RESIZE CANVAS"
+            android:text="LAYERS"
             android:textAppearance="?attr/textAppearanceBodyLarge"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="@id/doneIv"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="@id/doneIv" />
 
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/dimensionTv"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="2016x1512"
-            android:textAppearance="?attr/textAppearanceLabelMedium"
-            app:layout_constraintBottom_toBottomOf="@id/doneIv"
-            app:layout_constraintStart_toEndOf="@id/resizeCanvasTv"
-            app:layout_constraintTop_toTopOf="@id/doneIv" />
-
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/canvasSizeRecycler"
+            android:id="@+id/layerListRecycler"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="16dp"
-            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
             android:visibility="visible"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@id/resizeCanvasTv"
-            tools:listitem="@layout/item_canvas_size" />
+            tools:listitem="@layout/item_layer_list" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

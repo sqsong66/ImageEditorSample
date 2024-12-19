@@ -12,6 +12,8 @@ activity = "1.9.3"
 constraintlayout = "2.2.0"
 glide = "4.16.0"
 gson = "2.11.0"
+mlkit-segmentation = "16.0.0-beta6"
+removebg = "1.0.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -25,6 +27,8 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 glide-compiler = { group = "com.github.bumptech.glide", name = "ksp", version.ref = "glide" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+mlkit-segmentation = { group = "com.google.mlkit", name = "segmentation-selfie", version.ref = "mlkit-segmentation" }
+removebg = { group = "com.github.erenalpaslan", name = "removebg", version.ref = "removebg" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

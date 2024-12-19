@@ -6,4 +6,18 @@
         <attr name="iev_borderWidth" format="dimension" />
         <attr name="iev_borderColor" format="color" />
     </declare-styleable>
+
+    <declare-styleable name="LayerPreviewImageView">
+        <attr name="lpiv_borderWidth" format="dimension" />
+        <attr name="lpiv_borderColor" format="color" />
+        <attr name="lpiv_cornerRadius" format="dimension" />
+        <attr name="lpiv_text" format="string" />
+        <attr name="lpiv_textSize" format="dimension" />
+        <attr name="lpiv_textColor" format="color" />
+        <attr name="lpiv_layerType" format="enum">
+            <enum name="image" value="0" />
+            <enum name="background" value="1" />
+            <enum name="text" value="2" />
+        </attr>
+    </declare-styleable>
 </resources>

@@ -9,12 +9,12 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
-import android.util.Log
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
 import com.example.customviewsample.common.helper.BitmapCacheHelper
 import com.example.customviewsample.view.layer.anno.LayerType
 import com.example.customviewsample.view.layer.data.BackgroundLayerInfo
+import com.example.customviewsample.view.layer.data.LayerPreviewData
 import com.example.customviewsample.view.layer.data.LayerSnapShot
 import com.sqsong.nativelib.NativeLib
 
@@ -33,10 +33,6 @@ class BackgroundLayerView @JvmOverloads constructor(
         }
     }
 
-    init {
-        Log.e("songmao", "BackgroundLayerView init: $layoutInfo")
-    }
-
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         bgColor?.let { color ->
@@ -52,9 +48,13 @@ class BackgroundLayerView @JvmOverloads constructor(
         }
         val layoutInfo = LayoutInfo()
         updateChildLayoutInfo(layoutInfo, clipRect, this)
-        Log.w("songmao", "BackgroundLayerView toLayerSnapshot: $layoutInfo")
-        val layerInfo = BackgroundLayerInfo(bgCachePath = cachePath, bgColor = bgColor?.clone(), layerWidth = width, layerHeight = height, scaleX = scaleX, scaleY = scaleY, rotation = rotation, translationX = translationX, translationY = translationY)
+        // Log.w("songmao", "BackgroundLayerView toLayerSnapshot: $layoutInfo")
+        val layerInfo = BackgroundLayerInfo(bgCachePath = cachePath, bgColor = bgColor?.clone(), layerWidth = width, layerHeight = height, scaleX = scaleX, scaleY = scaleY, rotation = rotation)
         return LayerSnapShot(getViewLayerType(), layoutInfo, backgroundLayerInfo = layerInfo)
+    }
+
+    override fun toLayerPreview(): LayerPreviewData {
+        return LayerPreviewData(id, getViewLayerType(), "Background", layerColor = bgColor?.clone(), layerBitmap = imageBitmap)
     }
 
     override fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot, clipRect: RectF) {

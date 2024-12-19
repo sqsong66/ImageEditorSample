@@ -14,7 +14,7 @@ abstract class AbstractItemAdapter<T, V : ViewBinding>(
     protected val dataList = mutableListOf<T>()
 
     @SuppressLint("NotifyDataSetChanged")
-    fun submitList(list: List<T>) {
+    open fun submitList(list: List<T>) {
         dataList.clear()
         dataList.addAll(list)
         notifyDataSetChanged()

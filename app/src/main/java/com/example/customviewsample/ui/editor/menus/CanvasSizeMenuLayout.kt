@@ -5,9 +5,11 @@ import android.view.View
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.view.updatePadding
 import com.example.customviewsample.common.behavior.EditMenuBottomSheetBehavior
+import com.example.customviewsample.common.ext.setMaterialShapeBackgroundDrawable
 import com.example.customviewsample.data.CanvasSize
 import com.example.customviewsample.databinding.LayoutMenuCanvasSizeBinding
 import com.example.customviewsample.ui.editor.adapter.CanvasSizeListAdapter
+import com.example.customviewsample.utils.dp2Px
 
 @SuppressLint("SetTextI18n")
 class CanvasSizeMenuLayout(
@@ -39,10 +41,15 @@ class CanvasSizeMenuLayout(
 
     private fun initLayout() {
         binding.root.updatePadding(bottom = bottomPadding)
+        binding.resizeCanvasTv.setMaterialShapeBackgroundDrawable(allCornerSize = dp2Px(4), backgroundColorResId = com.google.android.material.R.attr.colorSurfaceContainerHighest)
         binding.doneIv.setOnClickListener { menuBehavior.state = EditMenuBottomSheetBehavior.STATE_HIDDEN }
         binding.canvasSizeRecycler.adapter = canvasSizeListAdapter
         canvasSizeListAdapter.updateCheckIndex(canvasSize)
         binding.dimensionTv.text = "${canvasSize.width}x${canvasSize.height}"
+    }
+
+    fun updateCanvasSizeIndex(canvasSize: CanvasSize) {
+        canvasSizeListAdapter.updateCheckIndex(canvasSize)
     }
 
 }

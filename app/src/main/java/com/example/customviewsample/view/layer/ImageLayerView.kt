@@ -17,6 +17,7 @@ import com.example.customviewsample.utils.dp2Px
 import com.example.customviewsample.utils.getThemeColor
 import com.example.customviewsample.view.layer.anno.LayerType
 import com.example.customviewsample.view.layer.data.ImageLayerInfo
+import com.example.customviewsample.view.layer.data.LayerPreviewData
 import com.example.customviewsample.view.layer.data.LayerSnapShot
 import com.sqsong.nativelib.NativeLib
 
@@ -50,11 +51,11 @@ open class ImageLayerView @JvmOverloads constructor(
     override fun getViewLayerType(): Int = LayerType.LAYER_IMAGE
 
     override fun toLayerSnapshot(clipRect: RectF): LayerSnapShot? {
-        val cachePath = imageBitmap?.let {
-            BitmapCacheHelper.get().cacheBitmap(context, it, NativeLib.hasAlpha(it))
-        }
-        val layerInfo = ImageLayerInfo(imageCachePath = cachePath, layerWidth = width, layerHeight = height, scaleX = scaleX, scaleY = scaleY, rotation = rotation, translationX = translationX, translationY = translationY)
-        return LayerSnapShot(getViewLayerType(), layoutInfo.copy(), layerInfo)
+        val cachePath = imageBitmap?.let { BitmapCacheHelper.get().cacheBitmap(context, it, NativeLib.hasAlpha(it)) }
+        val layoutInfo = LayoutInfo()
+        updateChildLayoutInfo(layoutInfo, clipRect, this)
+        val layerInfo = ImageLayerInfo(imageCachePath = cachePath, layerWidth = width, layerHeight = height, scaleX = scaleX, scaleY = scaleY, rotation = rotation)
+        return LayerSnapShot(getViewLayerType(), layoutInfo, layerInfo)
     }
 
     override fun restoreLayerFromSnapshot(viewGroup: ViewGroup, snapshot: LayerSnapShot, clipRect: RectF) {
@@ -67,6 +68,10 @@ open class ImageLayerView @JvmOverloads constructor(
         scaleX = layerInfo.scaleX
         scaleY = layerInfo.scaleY
         rotation = layerInfo.rotation
+    }
+
+    override fun toLayerPreview(): LayerPreviewData {
+        return LayerPreviewData(id, getViewLayerType(), "Image", imageBitmap)
     }
 
     override fun isEditMenuAvailable(): Boolean = true

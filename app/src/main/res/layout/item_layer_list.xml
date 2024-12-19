@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="4dp"
+    android:gravity="center_vertical"
+    tools:background="?attr/colorSurfaceContainerHighest">
+
+    <com.example.customviewsample.view.LayerPreviewImageView
+        android:id="@+id/layerPreviewIv"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_margin="8dp"
+        app:lpiv_cornerRadius="6dp"
+        app:lpiv_layerType="text"
+        app:srcCompat="@drawable/ic_redo" />
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/layerNameTv"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_weight="1"
+        android:text="Image"
+        android:textAppearance="?attr/textAppearanceLabelLarge"
+        android:textSize="16sp" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/layerOrderIv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:alpha=".6"
+        app:srcCompat="@drawable/ic_order"
+        app:tint="?attr/colorOnSurface" />
+
+
+</androidx.appcompat.widget.LinearLayoutCompat>
