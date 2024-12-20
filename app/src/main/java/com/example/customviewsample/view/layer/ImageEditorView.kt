@@ -291,6 +291,7 @@ open class ImageEditorView @JvmOverloads constructor(
     }
 
     private fun showLayerEditMenu(layerView: AbsLayerView) {
+        if (!layerView.isEditMenuAvailable()) return
         tempRect.set(0f, 0f, layerView.width.toFloat(), layerView.height.toFloat())
         tempMatrix.set(layerView.matrix)
         tempMatrix.postTranslate(layerView.left.toFloat(), layerView.top.toFloat())

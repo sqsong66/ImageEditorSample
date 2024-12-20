@@ -191,6 +191,14 @@ class ImageEditorActivity : BaseActivity<ActivityImageEditorBinding>(ActivityIma
             MenuType.MENU_MAIN_RESIZE -> {
                 showBackgroundMenu()
             }
+
+            MenuType.MENU_MAIN_BACKGROUND -> {
+                TODO()
+            }
+
+            MenuType.MENU_MAIN_TEXT -> {
+                TODO()
+            }
         }
     }
 
