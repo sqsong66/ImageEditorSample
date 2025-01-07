@@ -35,7 +35,7 @@ class LoadSvgActivity : BaseActivity<ActivityLoadSvgBinding>(ActivityLoadSvgBind
     }
 
     private fun loadEmojisDir() {
-        File(getEmojisPath(this@LoadSvgActivity)).list()?.let {
+        File(getEmojisPath(this@LoadSvgActivity)).list()?.sorted()?.let {
             emojisFragmentAdapter.setEmojiDirs(it.toList())
             binding.viewPager.adapter = emojisFragmentAdapter
 
@@ -81,7 +81,7 @@ class LoadSvgActivity : BaseActivity<ActivityLoadSvgBinding>(ActivityLoadSvgBind
     private fun unzipEmojis() {
         flow {
             val start = System.currentTimeMillis()
-            val files = unzipEmojisFile(this@LoadSvgActivity, "emojis.zip")
+            val files = unzipEmojisFile(this@LoadSvgActivity, "emojis_flat.zip")
             Log.d("songmao", "unzipEmojis cost: ${System.currentTimeMillis() - start}ms.")
             val dirName = File(getEmojisPath(this@LoadSvgActivity)).list()?.random()
             Log.d("songmao", "unzipEmojis dirName: $dirName")

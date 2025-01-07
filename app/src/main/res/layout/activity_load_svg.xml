@@ -22,7 +22,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:text="Unzip Emoji"
-        android:visibility="gone"
+        android:visibility="visible"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbar" />
 
@@ -32,7 +32,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:text="Load SVG"
-        android:visibility="gone"
+        android:visibility="visible"
         app:layout_constraintStart_toEndOf="@id/unzipEmojiButton"
         app:layout_constraintTop_toBottomOf="@id/toolbar" />
 
