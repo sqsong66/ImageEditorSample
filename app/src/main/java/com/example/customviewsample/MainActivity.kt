@@ -8,6 +8,7 @@ import com.example.customviewsample.databinding.ActivityMainBinding
 import com.example.customviewsample.ui.cutout.ImageCutoutActivity
 import com.example.customviewsample.ui.editor.ImageEditorActivity
 import com.example.customviewsample.ui.segment.ImageSegmentationActivity
+import com.example.customviewsample.ui.svg.LoadSvgActivity
 
 class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::inflate), View.OnClickListener {
 
@@ -19,6 +20,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::infl
         binding.imageEditor.setOnClickListener(this)
         binding.imageSegmentationBtn.setOnClickListener(this)
         binding.imageCutoutBtn.setOnClickListener(this)
+        binding.loadSvgBtn.setOnClickListener(this)
     }
 
     override fun onClick(v: View?) {
@@ -33,6 +35,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::infl
 
             R.id.imageCutoutBtn -> {
                 startActivity(Intent(this, ImageCutoutActivity::class.java))
+            }
+
+            R.id.loadSvgBtn -> {
+                startActivity(Intent(this, LoadSvgActivity::class.java))
             }
         }
     }

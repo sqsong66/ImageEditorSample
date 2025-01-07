@@ -14,6 +14,7 @@ glide = "4.16.0"
 gson = "2.11.0"
 mlkit-segmentation = "16.0.0-beta6"
 removebg = "1.0.4"
+svg = "1.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,6 +30,7 @@ glide-compiler = { group = "com.github.bumptech.glide", name = "ksp", version.re
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 mlkit-segmentation = { group = "com.google.mlkit", name = "segmentation-selfie", version.ref = "mlkit-segmentation" }
 removebg = { group = "com.github.erenalpaslan", name = "removebg", version.ref = "removebg" }
+svg = { group = "com.caverock", name = "androidsvg-aar", version.ref = "svg" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

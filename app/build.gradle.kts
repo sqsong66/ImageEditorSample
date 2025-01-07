@@ -58,4 +58,7 @@ dependencies {
 
     implementation(libs.mlkit.segmentation)
     implementation(libs.removebg)
+
+    // Svg
+    implementation(libs.svg)
 }

@@ -1,16 +1,23 @@
 package com.example.customviewsample.utils
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.RectF
 import android.net.Uri
 import android.os.Environment
+import android.util.Log
 import androidx.core.content.FileProvider
+import com.caverock.androidsvg.SVG
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import javax.crypto.Cipher
 import javax.crypto.CipherOutputStream
@@ -52,6 +59,11 @@ fun getUndoRedoCacheDirPath(context: Context): String {
 fun getLogPath(context: Context): String {
     val externalDir: String = context.getExternalFilesDir(null)?.absolutePath ?: context.filesDir.absolutePath
     return externalDir.plus(File.separator).plus("Logs")
+}
+
+fun getEmojisPath(context: Context): String {
+    val externalDir: String = context.getExternalFilesDir(null)?.absolutePath ?: context.filesDir.absolutePath
+    return externalDir.plus(File.separator).plus("Emojis")
 }
 
 fun encryptZipFile(zipFile: File, encryptedZipFile: File) {
@@ -155,5 +167,62 @@ fun deleteExpiredLogFiles(context: Context) {
     logFiles.sortedBy { it.lastModified() }.take(logFiles.size - 10).forEach {
         it.delete()
     }
+}
+
+fun deleteDirector(fileDir: File) {
+    if (!fileDir.exists()) return
+    if (fileDir.isDirectory) {
+        fileDir.listFiles()?.forEach { deleteDirector(it) }
+    }
+    try {
+        fileDir.delete()
+    } catch (ex: Exception) {
+        ex.printStackTrace()
+    }
+}
+
+fun unzipEmojisFile(context: Context, assetsPath: String): List<File> {
+    val fileList = mutableListOf<File>()
+    val unzipDir = File(getEmojisPath(context))
+    deleteDirector(unzipDir)
+    if (!unzipDir.exists()) {
+        unzipDir.mkdirs()
+    }
+    context.assets.open(assetsPath).use { assetsStream ->
+        ZipInputStream(assetsStream).use { zipInputStream ->
+            var entry: ZipEntry?
+            var count: Int
+            val buffer = ByteArray(2048)
+            while (zipInputStream.nextEntry.also { entry = it } != null) {
+                val zipEntry = entry ?: continue
+                require(!zipEntry.name.contains("../")) { "Zip entry name is invalid: ${zipEntry.name}" }
+                val file = File(unzipDir, zipEntry.name)
+                if (!file.canonicalPath.startsWith(unzipDir.canonicalPath)) throw SecurityException("Unzip file path is invalid.")
+                val dir = if (zipEntry.isDirectory) file else file.parentFile
+                if (!dir.isDirectory && !dir.mkdirs()) throw FileNotFoundException("Failed create director: ${dir.absolutePath}")
+                if (zipEntry.isDirectory) continue
+                FileOutputStream(file).use { outputStream ->
+                    while (zipInputStream.read(buffer).also { count = it } != -1) outputStream.write(buffer, 0, count)
+                }
+                val time = zipEntry.time
+                if (time > 0) file.setLastModified(time)
+                fileList.add(file)
+                Log.d("sqsong", "Get file: ${file.name}, path: ${file.absolutePath}, parent: ${file.parentFile?.name}")
+            }
+        }
+    }
+    return fileList
+}
+
+fun decodeSvgToBitmap(svgFile: File, width: Int, height: Int): Bitmap {
+    val svg = SVG.getFromInputStream(svgFile.inputStream())
+    svg.setDocumentWidth(width.toFloat())
+    svg.setDocumentHeight(height.toFloat())
+    val picture = svg.renderToPicture(width, height)
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val drawRect = RectF(0f, 0f, width.toFloat(), height.toFloat())
+    canvas.drawPicture(picture, drawRect)
+    return bitmap
 }
 
