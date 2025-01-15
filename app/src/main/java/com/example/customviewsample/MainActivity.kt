@@ -13,7 +13,7 @@ import com.example.customviewsample.ui.svg.LoadSvgActivity
 class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::inflate), View.OnClickListener {
 
     override fun initActivity(savedInstanceState: Bundle?) {
-
+        binding.progressView.start()
     }
 
     override fun initListeners() {
