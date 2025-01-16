@@ -121,4 +121,10 @@ class OpenGLRender(
         bgAlpha = ((color shr 24) and 0xff) / 255f
     }
 
+    fun setUserScale(scaleFactor: Float, focusX: Float, focusY: Float, tx: Float, ty: Float) {
+        runOnDraw {
+            imageFilter.setUserScale(scaleFactor, focusX, focusY, tx, ty)
+        }
+    }
+
 }
