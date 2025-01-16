@@ -39,6 +39,7 @@ android {
 
 dependencies {
     implementation(project(":nativelib"))
+    implementation(project(":OpenGLLib"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

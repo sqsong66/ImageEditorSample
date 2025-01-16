@@ -15,6 +15,12 @@
         android:theme="@style/Theme.CustomViewSample"
         tools:targetApi="31">
         <activity
+            android:name=".ui.gl.ScalableGLActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.curve.ColorCurveActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.svg.EmojiPreviewActivity"
             android:exported="false" />
         <activity

@@ -51,13 +51,26 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/imageCutoutBtn" />
 
-    <com.example.customviewsample.view.IndeterminateCircleProgressView
-        android:id="@+id/progressView"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/curveViewBtn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
         android:layout_marginTop="16dp"
+        android:text="Curve View"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/loadSvgBtn" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/scalableOpenGLBtn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="16dp"
+        android:text="Scalable GLTextureView"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/curveViewBtn" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

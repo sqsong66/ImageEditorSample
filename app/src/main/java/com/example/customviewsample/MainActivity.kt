@@ -5,15 +5,17 @@ import android.os.Bundle
 import android.view.View
 import com.example.customviewsample.base.BaseActivity
 import com.example.customviewsample.databinding.ActivityMainBinding
+import com.example.customviewsample.ui.curve.ColorCurveActivity
 import com.example.customviewsample.ui.cutout.ImageCutoutActivity
 import com.example.customviewsample.ui.editor.ImageEditorActivity
+import com.example.customviewsample.ui.gl.ScalableGLActivity
 import com.example.customviewsample.ui.segment.ImageSegmentationActivity
 import com.example.customviewsample.ui.svg.LoadSvgActivity
 
 class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::inflate), View.OnClickListener {
 
     override fun initActivity(savedInstanceState: Bundle?) {
-        binding.progressView.start()
+
     }
 
     override fun initListeners() {
@@ -21,6 +23,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::infl
         binding.imageSegmentationBtn.setOnClickListener(this)
         binding.imageCutoutBtn.setOnClickListener(this)
         binding.loadSvgBtn.setOnClickListener(this)
+        binding.curveViewBtn.setOnClickListener(this)
+        binding.scalableOpenGLBtn.setOnClickListener(this)
     }
 
     override fun onClick(v: View?) {
@@ -39,6 +43,14 @@ class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::infl
 
             R.id.loadSvgBtn -> {
                 startActivity(Intent(this, LoadSvgActivity::class.java))
+            }
+
+            R.id.curveViewBtn -> {
+                startActivity(Intent(this, ColorCurveActivity::class.java))
+            }
+
+            R.id.scalableOpenGLBtn -> {
+                startActivity(Intent(this, ScalableGLActivity::class.java))
             }
         }
     }
