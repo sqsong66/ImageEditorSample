@@ -27,6 +27,13 @@ fun Matrix.matrixTranslate(): FloatArray {
     }
 }
 
+fun Matrix.matrixTranslatePair(): Pair<Float, Float> {
+    return FloatArray(9).run {
+        getValues(this)
+        Pair(this[Matrix.MTRANS_X], this[Matrix.MTRANS_Y])
+    }
+}
+
 fun Matrix.scaleValue(): FloatArray {
     val values = FloatArray(9)
     getValues(values)

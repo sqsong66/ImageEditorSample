@@ -29,3 +29,4 @@ rootProject.name = "CustomViewSample"
 include(":app")
 include(":nativelib")
 include(":OpenGLLib")
+include(":renderscript-toolkit")
