@@ -31,8 +31,8 @@ class ImageOutlineView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr), CoroutineScope by MainScope() {
 
     private val maxBlurRadius = 25f
-    private val maxOutlineSize = 400
-    private val maxStrokeWidth = dp2Px<Float>(10)
+    private val maxOutlineSize = 500
+    private val maxStrokeWidth = dp2Px<Float>(30)
 
     private var outlineStokeWidth = 0f
     private var outlineBlurRadius = 0
@@ -63,7 +63,7 @@ class ImageOutlineView @JvmOverloads constructor(
             strokeCap = Paint.Cap.ROUND
             style = Paint.Style.STROKE
             strokeWidth = outlineStokeWidth
-            color = Color.RED
+            color = Color.WHITE
         }
     }
 
@@ -107,7 +107,7 @@ class ImageOutlineView @JvmOverloads constructor(
         flow {
             val start = System.currentTimeMillis()
             val b = prepareOutlineAsync(bitmap)
-            Log.w("songmao", "prepareOutline cost: ${System.currentTimeMillis() - start}ms")
+            Log.w("songmao", "prepareOutline cost: ${System.currentTimeMillis() - start}ms, bitmap size: ${b.width}x${b.height}")
             emit(b)
         }.onEach {
             outlineBitmap = it
@@ -116,6 +116,9 @@ class ImageOutlineView @JvmOverloads constructor(
         }.launchIn(this)
     }
 
+    /**
+     * 根据原图进行一定比例的缩放，然后再加上一定的描边宽度和模糊半径来生成一张描边扩展图
+     */
     private fun buildOutlineBitmap(srcBitmap: Bitmap): Bitmap {
         val (outlineWidth, outlineHeight) = if (srcBitmap.width > srcBitmap.height) {
             if (srcBitmap.width > maxOutlineSize) {
@@ -136,12 +139,13 @@ class ImageOutlineView @JvmOverloads constructor(
     }
 
     private fun prepareOutlineAsync(bitmap: Bitmap): Bitmap {
+        // 根据原图生成一张进行了扩展的描边图
         val b = srcOutlineBitmap ?: buildOutlineBitmap(bitmap).apply { srcOutlineBitmap = this }
         val (outlineWidth, outlineHeight) = (b.width - 2 * outlineBitmapPadding) to (b.height - 2 * outlineBitmapPadding)
-
         val path = outlinePath ?: NativeLib.getBitmapOutlinePath(bitmap).apply { outlinePath = this }
         val sx = outlineWidth.toFloat() / bitmap.width
         val sy = outlineHeight.toFloat() / bitmap.height
+        // 根据原图及扩展图的扩展大小和比例来将描边绘制到扩展图上
         pathMatrix.setScale(sx, sy)
         pathMatrix.postTranslate(outlineBitmapPadding.toFloat(), outlineBitmapPadding.toFloat())
         val scaledOutlinePath = Path(path).apply { transform(pathMatrix) }
@@ -150,6 +154,7 @@ class ImageOutlineView @JvmOverloads constructor(
             outlinePaint.strokeWidth = outlineStokeWidth
             drawPath(scaledOutlinePath, outlinePaint)
         }
+        // 对描边图进行高斯模糊处理(如必要)
         return if (outlineBlurRadius > 0) {
             Toolkit.blur(b, outlineBlurRadius)
         } else {
@@ -159,7 +164,7 @@ class ImageOutlineView @JvmOverloads constructor(
 
     private fun calculateMatrix(bitmap: Bitmap) {
         imageMatrix.reset()
-        val scaleFactor = 0.8f
+        val scaleFactor = 0.6f
         val viewRatio = width.toFloat() / height
         val bitmapRatio = bitmap.width.toFloat() / bitmap.height
         val scale = if (viewRatio > bitmapRatio) {
@@ -188,16 +193,20 @@ class ImageOutlineView @JvmOverloads constructor(
     }
 
     private fun calculateOutlineMatrix(bitmap: Bitmap, outlineBitmap: Bitmap) {
+        // 获取原始图片展示的缩放比
         val scale = imageMatrix.matrixScale()
         val finalImageW = bitmap.width * scale
         val finalImageH = bitmap.height * scale
+        // 扩展前的图片大小与原始图片大小来计算描边图的缩放比
         val (outlineWidth, outlineHeight) = (outlineBitmap.width - 2 * outlineBitmapPadding) to (outlineBitmap.height - 2 * outlineBitmapPadding)
         val outlineScaleX = finalImageW / outlineWidth
         val outlineScaleY = finalImageH / outlineHeight
         outlineMatrix.reset()
         outlineMatrix.postScale(outlineScaleX, outlineScaleY)
         val (tx, ty) = imageMatrix.matrixTranslatePair()
+        // 先根据原始图片的平移量来对描边图进行平移
         outlineMatrix.postTranslate(tx, ty)
+        // 再根据描边图的扩展大小和比例来对描边图进行平移,让其与原图进行贴合
         outlineMatrix.postTranslate(-outlineBitmapPadding * outlineScaleX, -outlineBitmapPadding * outlineScaleY)
     }
 }

@@ -5,7 +5,10 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.gl.ScalableGLActivity">
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    tools:context=".ui.curve.ColorCurveActivity"
+    tools:ignore="HardcodedText">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
@@ -14,36 +17,35 @@
         app:layout_constraintTop_toTopOf="parent"
         app:navigationIcon="@drawable/baseline_arrow_back_24"
         app:navigationIconTint="?attr/colorOnSurface"
-        app:title="Scalable GLTextureView" />
+        app:title="JNI Test" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/addImageBtn"
+        android:id="@+id/chooseImageBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:text="Add Image"
+        android:text="Choose Image"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbar" />
 
-    <com.google.android.material.slider.Slider
-        android:id="@+id/slider"
-        style="@style/Widget.Material3.Slider"
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/srcImage"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintBottom_toTopOf="@id/mattingImage"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/addImageBtn" />
+        app:layout_constraintTop_toBottomOf="@id/chooseImageBtn" />
 
-    <com.sqsong.opengllib.OpenGLTextureView
-        android:id="@+id/glTextureView"
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/mattingImage"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/slider" />
+        app:layout_constraintTop_toBottomOf="@id/srcImage" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

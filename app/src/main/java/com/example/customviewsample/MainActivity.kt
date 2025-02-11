@@ -9,6 +9,7 @@ import com.example.customviewsample.ui.curve.ColorCurveActivity
 import com.example.customviewsample.ui.cutout.ImageCutoutActivity
 import com.example.customviewsample.ui.editor.ImageEditorActivity
 import com.example.customviewsample.ui.gl.ScalableGLActivity
+import com.example.customviewsample.ui.jni.JNITestActivity
 import com.example.customviewsample.ui.outline.ImageOutlineActivity
 import com.example.customviewsample.ui.segment.ImageSegmentationActivity
 import com.example.customviewsample.ui.svg.LoadSvgActivity
@@ -27,6 +28,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::infl
         binding.curveViewBtn.setOnClickListener(this)
         binding.scalableOpenGLBtn.setOnClickListener(this)
         binding.outlineBtn.setOnClickListener(this)
+        binding.jniBtn.setOnClickListener(this)
     }
 
     override fun onClick(v: View?) {
@@ -57,6 +59,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>(ActivityMainBinding::infl
 
             R.id.outlineBtn -> {
                 startActivity(Intent(this, ImageOutlineActivity::class.java))
+            }
+
+            R.id.jniBtn -> {
+                startActivity(Intent(this, JNITestActivity::class.java))
             }
         }
     }

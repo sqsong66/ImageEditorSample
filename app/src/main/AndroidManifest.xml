@@ -45,6 +45,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".ui.svg.LoadSvgActivity" />
+        <activity android:name="com.example.customviewsample.ui.jni.JNITestActivity" />
     </application>
 
 </manifest>
