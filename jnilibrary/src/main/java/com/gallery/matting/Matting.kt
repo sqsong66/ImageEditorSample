@@ -7,7 +7,6 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.util.Log
 
-
 object Matting {
 
     init {
@@ -15,18 +14,18 @@ object Matting {
     }
 
     private fun cutoutBitmap(mask: Bitmap, bitmap: Bitmap): Bitmap {
-        val createBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(createBitmap)
-        val paint = Paint(3)
+        val newBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(newBitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.setXfermode(PorterDuffXfermode(PorterDuff.Mode.SRC_IN))
-        canvas.drawBitmap(mask, 0.0f, 0.0f, null as Paint?)
+        canvas.drawBitmap(mask, 0.0f, 0.0f, null)
         canvas.drawBitmap(bitmap, 0.0f, 0.0f, paint)
-        return createBitmap
+        return newBitmap
     }
 
-    fun mattingBitmap(path1: String, path2: String, bitmap: Bitmap): Bitmap? {
+    fun mattingBitmap(segModelPath: String, mattingModelPath: String, bitmap: Bitmap): Bitmap {
         val imageData = ImageData()
-        val result = mattingBitmap(path1, path2, bitmap, imageData)
+        val result = mattingBitmap(segModelPath, mattingModelPath, bitmap, imageData)
         Log.d("sqsong", "mattingBitmap result: $result")
         val mask = imageData.convertToBitmap()
         val matting = cutoutBitmap(mask, bitmap)

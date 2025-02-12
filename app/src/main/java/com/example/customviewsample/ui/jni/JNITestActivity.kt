@@ -10,6 +10,7 @@ import com.example.customviewsample.base.BaseActivity
 import com.example.customviewsample.databinding.ActivityJniTestBinding
 import com.example.customviewsample.utils.decodeBitmapByGlide
 import com.gallery.matting.Matting
+import com.sqsong.cryptlib.CryptLib
 import jp.co.cyberagent.android.gpuimage.GPUImageNativeLibrary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -28,12 +29,16 @@ class JNITestActivity : BaseActivity<ActivityJniTestBinding>(ActivityJniTestBind
     }
 
     override fun initActivity(savedInstanceState: Bundle?) {
-        val keyArray = intArrayOf(101, 50, 90, 33, 111, 2, 3, 12, 5)
+        /*val keyArray = intArrayOf(101, 50, 90, 33, 111, 2, 3, 12, 5)
         keyArray.forEach { key ->
             val shader = GPUImageNativeLibrary.getShader(key)
             Log.d("sqsong", "Shader$key:\n$shader")
-        }
+        }*/
         decryptModels()
+
+        CryptLib.getDecryptedString(3)?.let { decryptedStr ->
+            Log.d("sqsong", "decryptedString:\n$decryptedStr")
+        }
     }
 
     private fun decryptModels() {
@@ -50,8 +55,8 @@ class JNITestActivity : BaseActivity<ActivityJniTestBinding>(ActivityJniTestBind
         }.flowOn(Dispatchers.IO)
             .catch { Log.e("sqsong", "decryptModels error: $it") }
             .onEach { (mattingModelFile, segModelFile) ->
-                Log.d("sqsong", "mattingModelFile: ${mattingModelFile}")
-                Log.d("sqsong", "segModelFile: ${segModelFile}")
+                Log.d("sqsong", "mattingModelFile: $mattingModelFile")
+                Log.d("sqsong", "segModelFile: $segModelFile")
                 modelPaths = Pair(mattingModelFile, segModelFile)
             }
             .launchIn(lifecycleScope)

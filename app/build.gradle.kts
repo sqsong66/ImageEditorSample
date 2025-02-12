@@ -40,14 +40,15 @@ android {
 dependencies {
     implementation(project(":nativelib"))
     implementation(project(":OpenGLLib"))
+    implementation(project(":renderscript-toolkit"))
+    implementation(project(":jnilibrary"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(project(":renderscript-toolkit"))
-    implementation(project(":jnilibrary"))
+    implementation(project(":cryptlib"))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -58,9 +59,6 @@ dependencies {
 
     // Gson
     implementation(libs.gson)
-
-    implementation(libs.mlkit.segmentation)
-    implementation(libs.removebg)
 
     // Svg
     implementation(libs.svg)
