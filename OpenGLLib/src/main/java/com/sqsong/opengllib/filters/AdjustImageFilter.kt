@@ -2,7 +2,8 @@ package com.sqsong.opengllib.filters
 
 import android.content.Context
 import android.opengl.GLES30
-import android.util.Log
+import com.sqsong.cryptlib.CryptLib
+import com.sqsong.cryptlib.EncryptKeys
 import com.sqsong.opengllib.common.Program
 import com.sqsong.opengllib.common.Texture
 import com.sqsong.opengllib.data.AdjustImageInfo
@@ -11,7 +12,11 @@ class AdjustImageFilter(
     context: Context,
     initOutputBuffer: Boolean = true,
     private var imageInfo: AdjustImageInfo = AdjustImageInfo()
-) : BaseImageFilter(context, fragmentAssets = "shader/filter_adjust_image.glsl", initOutputBuffer = initOutputBuffer) {
+) : BaseImageFilter(
+    context,
+    fragmentAssets = CryptLib.getDecryptedShader(EncryptKeys.KEY_SHADER_FRAG_ADJUST_IMAGE),
+    initOutputBuffer = initOutputBuffer
+) {
 
     override fun onPreDraw(program: Program, texture: Texture) {
         program.getUniformLocation("width").let {
@@ -53,7 +58,7 @@ class AdjustImageFilter(
     }
 
     override fun setProgress(progress: Float, extraType: Int) {
-        Log.d("AdjustImageFilter", "setProgress: progress: $progress, extraType: $extraType")
+        // Log.d("AdjustImageFilter", "setProgress: progress: $progress, extraType: $extraType")
         when (extraType) {
             FilterMode.FILTER_BRIGHTNESS -> {
                 imageInfo = imageInfo.copy(brightness = range(progress, -0.15f, 0.15f))

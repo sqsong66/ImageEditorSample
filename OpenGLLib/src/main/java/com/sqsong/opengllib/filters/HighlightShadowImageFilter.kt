@@ -2,6 +2,8 @@ package com.sqsong.opengllib.filters
 
 import android.content.Context
 import android.opengl.GLES30
+import com.sqsong.cryptlib.CryptLib
+import com.sqsong.cryptlib.EncryptKeys
 import com.sqsong.opengllib.common.Program
 import com.sqsong.opengllib.common.Texture
 
@@ -10,7 +12,11 @@ class HighlightShadowImageFilter(
     private var highlight: Float = 1f,
     private var shadow: Float = 1f,
     initOutputBuffer: Boolean = true
-) : BaseImageFilter(context, fragmentAssets = "shader/filter_highlight_shadow.glsl", initOutputBuffer = initOutputBuffer) {
+) : BaseImageFilter(
+    context,
+    fragmentAssets = CryptLib.getDecryptedShader(EncryptKeys.KEY_SHADER_FRAG_HIGHLIGHT_SHADOW), // "shader/shader_frag_highlight_shadow.glsl",
+    initOutputBuffer = initOutputBuffer
+) {
 
     override fun onPreDraw(program: Program, texture: Texture) {
         program.getUniformLocation("highlights").let {

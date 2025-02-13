@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ScalableGLTextureView">
+        <attr name="sgltv_enableScalable" format="boolean" />
+        <attr name="sgltv_minScaleFactor" format="float" />
+    </declare-styleable>
+</resources>

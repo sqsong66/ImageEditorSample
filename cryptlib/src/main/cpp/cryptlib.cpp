@@ -88,16 +88,10 @@ extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_sqsong_cryptlib_CryptLib_getDecryptedString(JNIEnv *env, jobject thiz, jint key) {
     // 根据 key 类型选择对应的 Base64 加密字符串
-    const char *encryptedBase64;
-    if (key == 1) {
-        encryptedBase64 = SHADER_BRIGHTNESS_FRAG;
-    } else if (key == 2) {
-        encryptedBase64 = SHADER_FRAG_CLARITY_FILTER;
-    } else if (key == 3) {
-        encryptedBase64 = SHADER_FRAG_CONTRAST_FILTER;
-    } else {
-        LOGE("getDecryptedString: Invalid key = %d", key);
-        return nullptr;  // 无效的 key 类型
+    const char *encryptedBase64 = getEncryptText(key);
+    if (encryptedBase64 == nullptr) {
+        LOGE("getDecryptedString: Cannot find key: %d encrypt text.", key);
+        return nullptr;
     }
 
     // 统一使用 AES_KEY_STRING 生成 AES-128 密钥（不足 16 字节则右侧补 0）

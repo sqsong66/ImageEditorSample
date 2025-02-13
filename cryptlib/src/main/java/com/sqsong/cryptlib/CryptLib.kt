@@ -6,6 +6,10 @@ object CryptLib {
         System.loadLibrary("cryptlib")
     }
 
+    fun getDecryptedShader(key: Int): String {
+        return getDecryptedString(key) ?: ""
+    }
+
     external fun getDecryptedString(key: Int): String?
 
     external fun decryptedString(text: String): String?

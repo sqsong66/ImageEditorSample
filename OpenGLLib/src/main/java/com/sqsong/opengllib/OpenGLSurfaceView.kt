@@ -6,7 +6,6 @@ import android.graphics.PixelFormat
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import com.sqsong.opengllib.filters.BaseImageFilter
-import com.sqsong.opengllib.filters.LUTImageFilter
 
 class OpenGLSurfaceView(
     context: Context,

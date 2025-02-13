@@ -2,17 +2,24 @@ package com.sqsong.opengllib.filters
 
 import android.content.Context
 import android.opengl.GLES30
+import com.sqsong.cryptlib.CryptLib
+import com.sqsong.cryptlib.EncryptKeys
 import com.sqsong.opengllib.common.FrameBuffer
 import com.sqsong.opengllib.common.GLVertexLinker
 import com.sqsong.opengllib.common.Program
 import com.sqsong.opengllib.common.Texture
+import com.sqsong.opengllib.utils.ext.readAssetsText
 
 class GaussianBlurImageFilter(
     context: Context,
     private var blurRadius: Int = 0,
     initOutputBuffer: Boolean = true,
     private var maxBlurRadius: Int = 50,
-) : BaseImageFilter(context, fragmentAssets = "shader/gaussian_blur_filter_frag.frag", initOutputBuffer = initOutputBuffer) {
+) : BaseImageFilter(
+    context,
+    fragmentAssets = context.readAssetsText("shader/shader_frag_gaussian_blur.frag"), // CryptLib.getDecryptedShader(EncryptKeys.KEY_SHADER_FRAG_GAUSSIAN_BLUR),
+    initOutputBuffer = initOutputBuffer
+) {
 
     private var horizontalBlurFbo: FrameBuffer? = null
 

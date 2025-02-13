@@ -3,6 +3,8 @@ package com.sqsong.opengllib.filters
 import android.content.Context
 import android.graphics.Bitmap
 import android.opengl.GLES30
+import com.sqsong.cryptlib.CryptLib
+import com.sqsong.cryptlib.EncryptKeys
 import com.sqsong.opengllib.common.BitmapTexture
 import com.sqsong.opengllib.common.Program
 import com.sqsong.opengllib.common.Texture
@@ -11,7 +13,7 @@ class LUTImageFilter(
     context: Context,
     private val lutBitmaps: List<Bitmap>,
     private var intensity: Float = 1.0f,
-    fragmentAsset: String = "shader/filter_lut.glsl",
+    fragmentAsset: String = CryptLib.getDecryptedShader(EncryptKeys.KEY_SHADER_FRAG_LUT),  // "shader/shader_frag_lut.glsl",
     initOutputBuffer: Boolean = true
 ) : BaseImageFilter(context, fragmentAssets = fragmentAsset, initOutputBuffer = initOutputBuffer) {
 

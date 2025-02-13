@@ -39,8 +39,7 @@ import javax.microedition.khronos.opengles.GL10;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class GLTextureView extends TextureView
-        implements TextureView.SurfaceTextureListener, View.OnLayoutChangeListener {
+public class GLTextureView extends TextureView implements TextureView.SurfaceTextureListener, View.OnLayoutChangeListener {
 
     private final static String TAG = GLTextureView.class.getSimpleName();
 

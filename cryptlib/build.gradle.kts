@@ -1,6 +1,6 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+    id("com.android.library")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
@@ -16,6 +16,9 @@ android {
             cmake {
                 cppFlags("")
             }
+        }
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a"/*, "x86_64"*/)
         }
     }
 

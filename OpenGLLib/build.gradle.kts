@@ -30,10 +30,12 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
+    implementation(project(":cryptlib"))
+
     implementation(libs.material)
-    implementation(libs.androidx.appcompat)
     testImplementation(libs.junit)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

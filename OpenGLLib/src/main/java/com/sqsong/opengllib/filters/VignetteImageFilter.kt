@@ -2,6 +2,8 @@ package com.sqsong.opengllib.filters
 
 import android.content.Context
 import android.opengl.GLES30
+import com.sqsong.cryptlib.CryptLib
+import com.sqsong.cryptlib.EncryptKeys
 import com.sqsong.opengllib.common.Program
 import com.sqsong.opengllib.common.Texture
 
@@ -9,7 +11,11 @@ class VignetteImageFilter(
     context: Context,
     private var vignette: Float = 0f,
     initOutputBuffer: Boolean = true
-) : BaseImageFilter(context, fragmentAssets = "shader/vignette_filter_frag.frag", initOutputBuffer = initOutputBuffer) {
+) : BaseImageFilter(
+    context,
+    fragmentAssets = CryptLib.getDecryptedShader(EncryptKeys.KEY_SHADER_FRAG_VIGNETTE), // "shader/shader_frag_vignette.glsl",
+    initOutputBuffer = initOutputBuffer
+) {
 
     override fun onPreDraw(program: Program, texture: Texture) {
         program.getUniformLocation("vignetteSize").let {

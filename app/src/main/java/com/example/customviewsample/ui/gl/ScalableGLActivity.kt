@@ -31,7 +31,7 @@ class ScalableGLActivity : BaseActivity<ActivityScalableGlactivityBinding>(Activ
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.addImageBtn.setOnClickListener { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
         binding.slider.addOnChangeListener { _, value, _ ->
-            binding.glTextureView.setProgress(value)
+             binding.glTextureView.setProgress(value)
         }
     }
 
