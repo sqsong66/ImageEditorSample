@@ -17,9 +17,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.annotation.IntDef
+import androidx.core.animation.addListener
 import androidx.core.view.children
 import com.sqsong.opengllib.filters.BaseImageFilter
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sqrt
 
 @IntDef(
@@ -50,14 +52,26 @@ open class ScalableGLTextureView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : ViewGroup(context, attrs, defStyleAttr) {
 
+    companion object {
+        private const val DOUBLE_CLICK_INTERVAL = 220L
+    }
+
     private var minScaleFactor = 0.5f
+    private var maxScaleFactor = 10f
     private var enableScalable = true
     private var glTextureView: OpenGLTextureView? = null
 
     private var lastX = 0f
     private var lastY = 0f
 
+    // 手指按下的位置
     private val touchDownPoint = PointF()
+
+    // 手指按下时的时间
+    private var touchDownMillis = 0L
+
+    // 是否是双击事件
+    private var isDoubleClick = false
 
     @GestureMode
     private var gestureMode = GestureMode.GESTURE_NONE
@@ -71,14 +85,22 @@ open class ScalableGLTextureView @JvmOverloads constructor(
     // 双指移动时中心点
     private val moveFingerCenter = PointF()
 
+    // 双指时保存当前 TextureView 的缩放、旋转、平移信息
     private var textureLayoutInfo = LayoutInfo()
 
+    // 临时矩阵
     private val tempMatrix by lazy { Matrix() }
 
+    // 父控件的矩形区域
     private val viewRect = RectF()
+
+    // 临时矩形区域
     private val tempRect = RectF()
 
+    // 手指抬起时动画
     private var valueAnimator: ValueAnimator? = null
+
+    private var isAnimating = false
 
     private val testPaint by lazy {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -97,6 +119,7 @@ open class ScalableGLTextureView @JvmOverloads constructor(
         context.obtainStyledAttributes(attrs, R.styleable.ScalableGLTextureView).apply {
             enableScalable = getBoolean(R.styleable.ScalableGLTextureView_sgltv_enableScalable, true)
             minScaleFactor = getFloat(R.styleable.ScalableGLTextureView_sgltv_minScaleFactor, 0.5f)
+            maxScaleFactor = getFloat(R.styleable.ScalableGLTextureView_sgltv_maxScaleFactor, 10f)
             recycle()
         }
     }
@@ -195,7 +218,6 @@ open class ScalableGLTextureView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        // canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), testPaint)
         super.onDraw(canvas)
         canvas.drawLine(0f, height / 2f, width.toFloat(), height / 2f, testPaint)
     }
@@ -209,12 +231,19 @@ open class ScalableGLTextureView @JvmOverloads constructor(
             MotionEvent.ACTION_POINTER_DOWN -> onPointerDown(event)
 
             MotionEvent.ACTION_MOVE -> onTouchMove(event)
+
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> onTouchUp(event)
         }
         return true
     }
 
     private fun onTouchDown(event: MotionEvent) {
+        val timeMillis = System.currentTimeMillis()
+        if (timeMillis - touchDownMillis < DOUBLE_CLICK_INTERVAL) {
+            isDoubleClick = true
+        } else {
+            touchDownMillis = timeMillis
+        }
         touchDownPoint.set(event.x, event.y)
         gestureMode = GestureMode.GESTURE_DRAG
         lastX = event.x
@@ -223,6 +252,7 @@ open class ScalableGLTextureView @JvmOverloads constructor(
 
     private fun onPointerDown(event: MotionEvent) {
         if (event.pointerCount != 2) return
+        isDoubleClick = false
         gestureMode = GestureMode.GESTURE_SCALE
         fingerDistance = calculateDistance(event)
         calculateCenterPoint(touchDownFingerCenter, event)
@@ -280,8 +310,8 @@ open class ScalableGLTextureView @JvmOverloads constructor(
     }
 
     private fun onTextureViewTransition(view: View, scale: Float, tx: Float, ty: Float) {
-        view.scaleX = textureLayoutInfo.scaleX * scale
-        view.scaleY = textureLayoutInfo.scaleY * scale
+        view.scaleX = min(textureLayoutInfo.scaleX * scale, maxScaleFactor)
+        view.scaleY = min(textureLayoutInfo.scaleY * scale, maxScaleFactor)
         val dx = tx + textureLayoutInfo.translationX - view.translationX
         val dy = ty + textureLayoutInfo.translationY - view.translationY
         view.translationX += dx
@@ -289,12 +319,38 @@ open class ScalableGLTextureView @JvmOverloads constructor(
     }
 
     private fun onTouchUp(event: MotionEvent) {
+        Log.w("songmao", "onTouchUp: $isDoubleClick")
         glTextureView?.let { view ->
-            resetViewPivotTo(view, view.width / 2f, view.height / 2f, tempMatrix)
-            val transformedRect = getTransformedRect(view)
-            animateTextureViewToFitParent(view, transformedRect)
+            if (isDoubleClick) {
+                val transformedRect = getTransformedRect(view)
+                animateScaleTextureView(view, event, transformedRect)
+            } else {
+                resetViewPivotTo(view, view.width / 2f, view.height / 2f, tempMatrix)
+                val transformedRect = getTransformedRect(view)
+                animateTextureViewToFitParent(view, transformedRect)
+            }
         }
         gestureMode = GestureMode.GESTURE_NONE
+    }
+
+    private fun animateScaleTextureView(view: OpenGLTextureView, event: MotionEvent, rect: RectF) {
+        val sx = view.scaleX
+        val sy = view.scaleY
+        val halfMaxScale = maxScaleFactor / 2f
+        when {
+            sx < 1f || sy < 1f -> {
+                scaleTranslateAnimate(view, 1f, rect)
+            }
+
+            sx < halfMaxScale || sy < halfMaxScale -> {
+                stagingTextureLayoutInfo(view, event.x, event.y)
+                scaleTranslateAnimate(view, halfMaxScale, rect, needTranslate = false)
+            }
+
+            else -> {
+                scaleTranslateAnimate(view, 1f, rect)
+            }
+        }
     }
 
     private fun animateTextureViewToFitParent(view: View, rect: RectF) {
@@ -304,7 +360,7 @@ open class ScalableGLTextureView @JvmOverloads constructor(
         when {
             sx < 1f || sy < 1f -> {
                 val scaleFactor = max(minScaleFactor, sx)
-                scaleTranslateAnimate(view, scaleFactor, rect)
+                scaleTranslateAnimate(view, scaleFactor, rect, animateDuration = 80)
             }
 
             else -> {
@@ -314,6 +370,7 @@ open class ScalableGLTextureView @JvmOverloads constructor(
     }
 
     private fun translateAnimate(view: View, rect: RectF) {
+        if (isAnimating) return
         valueAnimator?.cancel()
         val startTx = view.translationX
         val startTy = view.translationY
@@ -345,7 +402,6 @@ open class ScalableGLTextureView @JvmOverloads constructor(
                 else -> 0f
             }
         }
-        Log.w("songmao", "dx: $dx, dy: $dy, rect: $rect, viewRect: $tempRect")
         valueAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 80
             interpolator = AccelerateDecelerateInterpolator()
@@ -354,20 +410,29 @@ open class ScalableGLTextureView @JvmOverloads constructor(
                 view.translationX = startTx + dx * factor
                 view.translationY = startTy + dy * factor
             }
+            addListener(onStart = {
+                isAnimating = true
+            }, onEnd = {
+                isAnimating = false
+            })
             start()
         }
     }
 
-    private fun scaleTranslateAnimate(view: View, minScaleFactor: Float, rect: RectF) {
+    private fun scaleTranslateAnimate(
+        view: View, minScaleFactor: Float, rect: RectF,
+        needTranslate: Boolean = true, animateDuration: Long = 200
+    ) {
+        if (isAnimating) return
         valueAnimator?.cancel()
         val viewScale = view.scaleX
         val diffScale = minScaleFactor - viewScale
         val tx = view.translationX
         val ty = view.translationY
-        val dx = width / 2 - rect.centerX()
-        val dy = height / 2 - rect.centerY()
+        val dx = if (needTranslate) width / 2 - rect.centerX() else 0f
+        val dy = if (needTranslate) height / 2 - rect.centerY() else 0f
         valueAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 80
+            duration = animateDuration
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener {
                 val factor = it.animatedValue as Float
@@ -377,6 +442,15 @@ open class ScalableGLTextureView @JvmOverloads constructor(
                 view.translationX = tx + dx * factor
                 view.translationY = ty + dy * factor
             }
+            addListener(onStart = {
+                isAnimating = true
+            }, onEnd = {
+                isAnimating = false
+                resetViewPivotTo(view, view.width / 2f, view.height / 2f, tempMatrix)
+                if (isDoubleClick) {
+                    isDoubleClick = false
+                }
+            })
             start()
         }
     }

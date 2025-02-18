@@ -3,5 +3,6 @@
     <declare-styleable name="ScalableGLTextureView">
         <attr name="sgltv_enableScalable" format="boolean" />
         <attr name="sgltv_minScaleFactor" format="float" />
+        <attr name="sgltv_maxScaleFactor" format="float" />
     </declare-styleable>
 </resources>

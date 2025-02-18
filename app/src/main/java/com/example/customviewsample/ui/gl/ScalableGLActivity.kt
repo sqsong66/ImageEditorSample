@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
+
 class ScalableGLActivity : BaseActivity<ActivityScalableGlactivityBinding>(ActivityScalableGlactivityBinding::inflate) {
 
     private val pickMedia = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -31,7 +32,7 @@ class ScalableGLActivity : BaseActivity<ActivityScalableGlactivityBinding>(Activ
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.addImageBtn.setOnClickListener { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
         binding.slider.addOnChangeListener { _, value, _ ->
-             binding.glTextureView.setProgress(value)
+            binding.glTextureView.setProgress(value)
         }
     }
 

@@ -17,7 +17,9 @@ fun checkGLError(tag: String) {
 fun loadShader(type: Int, shaderCode: String): Int {
     return GLES30.glCreateShader(type).also { shader ->
         GLES30.glShaderSource(shader, shaderCode)
+        checkGLError("glShaderSource")
         GLES30.glCompileShader(shader)
+        checkGLError("glCompileShader")
         val compileStatus = IntArray(1)
         GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compileStatus, 0)
         if (compileStatus[0] == 0) {

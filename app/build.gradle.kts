@@ -62,4 +62,7 @@ dependencies {
 
     // Svg
     implementation(libs.svg)
+
+    // okhttp
+    implementation(libs.okhttp)
 }

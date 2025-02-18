@@ -1,6 +1,7 @@
 package com.sqsong.opengllib.common
 
 import android.opengl.GLES30
+import com.sqsong.opengllib.utils.checkGLError
 import com.sqsong.opengllib.utils.loadShader
 
 class Program private constructor(
@@ -21,10 +22,13 @@ class Program private constructor(
             vertexShaderId = loadShader(GLES30.GL_VERTEX_SHADER, vertexShaderCode)
             fragmentShaderId = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentShaderCode)
             programId = GLES30.glCreateProgram()
+            checkGLError("glCreateProgram")
             if (programId != GLES30.GL_NONE) {
                 GLES30.glAttachShader(programId, vertexShaderId)
                 GLES30.glAttachShader(programId, fragmentShaderId)
+                checkGLError("glAttachShader")
                 GLES30.glLinkProgram(programId)
+                checkGLError("glLinkProgram")
                 val linkStatus = IntArray(1)
                 GLES30.glGetProgramiv(programId, GLES30.GL_LINK_STATUS, linkStatus, 0)
                 if (linkStatus[0] == 0) {
