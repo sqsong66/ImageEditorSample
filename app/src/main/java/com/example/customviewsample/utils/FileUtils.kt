@@ -213,16 +213,3 @@ fun unzipEmojisFile(context: Context, assetsPath: String): List<File> {
     }
     return fileList
 }
-
-fun decodeSvgToBitmap(svgFile: File, width: Int, height: Int): Bitmap {
-    val svg = SVG.getFromInputStream(svgFile.inputStream())
-    svg.setDocumentWidth(width.toFloat())
-    svg.setDocumentHeight(height.toFloat())
-    val picture = svg.renderToPicture(width, height)
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val drawRect = RectF(0f, 0f, width.toFloat(), height.toFloat())
-    canvas.drawPicture(picture, drawRect)
-    return bitmap
-}
-

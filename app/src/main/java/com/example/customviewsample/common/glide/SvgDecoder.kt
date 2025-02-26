@@ -15,7 +15,7 @@ class SvgDecoder : ResourceDecoder<InputStream, SVG> {
         return true
     }
 
-    override fun decode(source: InputStream, width: Int, height: Int, options: Options): Resource<SVG>? {
+    override fun decode(source: InputStream, width: Int, height: Int, options: Options): Resource<SVG> {
         try {
             val svg = SVG.getFromInputStream(source)
             if (width != SIZE_ORIGINAL) {
