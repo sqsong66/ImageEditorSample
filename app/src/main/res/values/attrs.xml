@@ -20,4 +20,19 @@
             <enum name="text" value="2" />
         </attr>
     </declare-styleable>
+
+    <declare-styleable name="EditorSaveView">
+        <attr name="esv_borderWidth" format="dimension" />
+        <attr name="esv_borderColor" format="color" />
+        <attr name="esv_cornerRadius" format="dimension" />
+        <attr name="esv_saveText" format="string" />
+        <attr name="esv_textSize" format="dimension" />
+        <attr name="esv_textColor" format="color" />
+        <attr name="esv_saveIcon" format="reference" />
+        <attr name="esv_galleryText" format="string" />
+        <attr name="esv_settingText" format="string" />
+        <attr name="esv_settingIcon" format="reference" />
+        <attr name="esv_arrowIcon" format="reference" />
+        <attr name="esv_iconTint" format="color" />
+    </declare-styleable>
 </resources>

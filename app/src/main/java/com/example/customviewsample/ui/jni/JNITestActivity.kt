@@ -29,16 +29,16 @@ class JNITestActivity : BaseActivity<ActivityJniTestBinding>(ActivityJniTestBind
     }
 
     override fun initActivity(savedInstanceState: Bundle?) {
-        /*val keyArray = intArrayOf(101, 50, 90, 33, 111, 2, 3, 12, 5)
+        val keyArray = intArrayOf(101, 50, 90, 33, 111, 2, 3, 12, 5)
         keyArray.forEach { key ->
             val shader = GPUImageNativeLibrary.getShader(key)
             Log.d("sqsong", "Shader$key:\n$shader")
-        }*/
+        }
         decryptModels()
 
-        CryptLib.getDecryptedString(3)?.let { decryptedStr ->
+        /*CryptLib.getDecryptedString(3)?.let { decryptedStr ->
             Log.d("sqsong", "decryptedString:\n$decryptedStr")
-        }
+        }*/
     }
 
     private fun decryptModels() {
