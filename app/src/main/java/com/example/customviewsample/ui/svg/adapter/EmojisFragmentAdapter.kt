@@ -1,5 +1,6 @@
 package com.example.customviewsample.ui.svg.adapter
 
+import android.annotation.SuppressLint
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
@@ -15,6 +16,7 @@ class EmojisFragmentAdapter(activity: AppCompatActivity) : FragmentStateAdapter(
         return EmojiFragment.newInstance(emojiDirs[position])
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     fun setEmojiDirs(emojiDirs: List<String>) {
         this.emojiDirs.clear()
         this.emojiDirs.addAll(emojiDirs)

@@ -1,14 +1,13 @@
 package com.example.customviewsample.ui.svg
 
-import android.graphics.drawable.PictureDrawable
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
-import com.bumptech.glide.Glide
 import com.example.customviewsample.base.BaseActivity
 import com.example.customviewsample.databinding.ActivityLoadSvgBinding
 import com.example.customviewsample.ui.svg.adapter.EmojisFragmentAdapter
+import com.example.customviewsample.utils.decodeSvgToBitmap
 import com.example.customviewsample.utils.getEmojisPath
 import com.example.customviewsample.utils.unzipEmojisFile
 import com.google.android.material.tabs.TabLayoutMediator
@@ -32,6 +31,7 @@ class LoadSvgActivity : BaseActivity<ActivityLoadSvgBinding>(ActivityLoadSvgBind
     override fun initListeners() {
         binding.unzipEmojiButton.setOnClickListener { unzipEmojis() }
         binding.loadSvgButton.setOnClickListener { loadSvgImage() }
+        binding.imageView.setOnClickListener { binding.imageView.visibility = android.view.View.GONE }
     }
 
     private fun loadEmojisDir() {
@@ -46,36 +46,31 @@ class LoadSvgActivity : BaseActivity<ActivityLoadSvgBinding>(ActivityLoadSvgBind
     }
 
     private fun loadSvgImage() {
-        /*flow {
+        flow {
             val dirName = File(getEmojisPath(this@LoadSvgActivity)).list()?.random()
             val fileName = File(getEmojisPath(this@LoadSvgActivity), dirName!!).list()?.random()
             Log.d("songmao", "loadSvgImage dirName: $dirName, fileName: $fileName")
             val svgFile = File(getEmojisPath(this@LoadSvgActivity), "$dirName/$fileName")
             val start = System.currentTimeMillis()
-            val svg = SVG.getFromInputStream(svgFile.inputStream())
-            svg.setDocumentWidth(1024f)
-            svg.setDocumentHeight(1024f)
-            val picture = svg.renderToPicture(1024, 1024)
-            val bitmap = Bitmap.createBitmap(1024, 1024, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            val drawRect = RectF(0f, 0f, 1024f, 1024f)
-            canvas.drawPicture(picture, drawRect)
+            val bitmap = decodeSvgToBitmap(svgFile.inputStream(), 1024)
             val end = System.currentTimeMillis()
-            Log.d("songmao", "loadSvgImage cost: ${end - start}ms.")
+            Log.d("songmao", "loadSvgImage cost: ${end - start}ms. bitmap size: ${bitmap.width}x${bitmap.height}")
             emit(bitmap)
         }.flowOn(Dispatchers.IO)
             .onEach {
                 binding.imageView.setImageBitmap(it)
+                binding.imageView.visibility = android.view.View.VISIBLE
             }
-            .launchIn(lifecycleScope)*/
-        val dirName = File(getEmojisPath(this@LoadSvgActivity)).list()?.random()
+            .launchIn(lifecycleScope)
+        /*val dirName = File(getEmojisPath(this@LoadSvgActivity)).list()?.random()
         val fileName = File(getEmojisPath(this@LoadSvgActivity), dirName!!).list()?.random()
         Log.d("songmao", "loadSvgImage dirName: $dirName, fileName: $fileName")
         val svgFile = File(getEmojisPath(this@LoadSvgActivity), "$dirName/$fileName")
         Glide.with(this)
             .`as`(PictureDrawable::class.java)
             .load(svgFile)
-            .into(binding.imageView)
+            .into(binding.imageView)*/
+
     }
 
     private fun unzipEmojis() {

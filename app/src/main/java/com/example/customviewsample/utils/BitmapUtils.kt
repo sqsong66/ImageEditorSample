@@ -4,7 +4,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Matrix
+import android.graphics.RectF
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
@@ -12,8 +14,10 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import com.bumptech.glide.Glide
+import com.caverock.androidsvg.SVG
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.max
@@ -211,4 +215,16 @@ fun saveBitmapToGallery(context: Context, bitmap: Bitmap, isPNG: Boolean): Uri {
         }
     }
     return destUri
+}
+
+fun decodeSvgToBitmap(svgInputStream: InputStream, renderWidth: Int, renderHeight: Int = renderWidth): Bitmap {
+    val svg = SVG.getFromInputStream(svgInputStream)
+    svg.setDocumentWidth(renderWidth.toFloat())
+    svg.setDocumentHeight(renderHeight.toFloat())
+    val picture = svg.renderToPicture()
+    val bitmap = Bitmap.createBitmap(renderWidth, renderHeight, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val drawRect = RectF(0f, 0f, renderWidth.toFloat(), renderHeight.toFloat())
+    canvas.drawPicture(picture, drawRect)
+    return bitmap
 }
