@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <declare-styleable name="ImageEditorView">
         <attr name="iev_cornerRadius" format="dimension" />
         <attr name="iev_borderWidth" format="dimension" />
@@ -34,5 +33,15 @@
         <attr name="esv_settingIcon" format="reference" />
         <attr name="esv_arrowIcon" format="reference" />
         <attr name="esv_iconTint" format="color" />
+        <attr name="esv_hPadding" format="dimension" />
+        <attr name="esv_vPadding" format="dimension" />
+        <attr name="esv_isAutoSaveMode" format="boolean" />
+        <attr name="esv_progressMaskColor" format="color" />
+        <attr name="esv_progressMaskDuration" format="color" />
+        <attr name="esv_iconSize" format="dimension" />
+        <attr name="esv_doneSize" format="dimension" />
+        <attr name="esv_doneIcon" format="reference" />
+        <attr name="esv_progressDoneColor" format="color" />
+        <attr name="esv_progressDoneDuration" format="integer" />
     </declare-styleable>
 </resources>

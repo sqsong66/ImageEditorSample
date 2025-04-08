@@ -12,11 +12,11 @@ import com.example.customviewsample.databinding.ActivitySaveAnimationBinding
 class SaveAnimationActivity : BaseActivity<ActivitySaveAnimationBinding>(ActivitySaveAnimationBinding::inflate) {
 
     override fun initActivity(savedInstanceState: Bundle?) {
-
+        binding.editorSaveView.startAnimation()
     }
 
     override fun initListeners() {
-
+        binding.editorSaveView.setOnClickListener {  }
     }
 
 }
