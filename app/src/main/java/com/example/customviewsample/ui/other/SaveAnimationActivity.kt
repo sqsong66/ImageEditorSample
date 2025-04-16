@@ -17,6 +17,8 @@ class SaveAnimationActivity : BaseActivity<ActivitySaveAnimationBinding>(Activit
 
     override fun initListeners() {
         binding.editorSaveView.setOnClickListener {  }
+        binding.saveLoadingButton.setOnClickListener {  }
+        binding.changeModeButton.setOnClickListener { binding.editorSaveView.toggleSaveMode() }
     }
 
 }

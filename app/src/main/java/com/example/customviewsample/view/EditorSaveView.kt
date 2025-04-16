@@ -12,6 +12,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.widget.LinearLayout
@@ -100,7 +101,7 @@ class EditorSaveView @JvmOverloads constructor(
     init {
         orientation = HORIZONTAL
         handleAttribute(context, attrs)
-        setPadding(hPadding.toInt(), vPadding.toInt(), hPadding.toInt() / 2, vPadding.toInt())
+        setPadding(hPadding.toInt(), vPadding.toInt(), 0, vPadding.toInt())
         gravity = if (isAutoSaveMode) Gravity.CENTER else Gravity.CENTER_VERTICAL
         setRippleForeground(allCornerRadius = cornerRadius)
         initLayout()
@@ -118,7 +119,7 @@ class EditorSaveView @JvmOverloads constructor(
             galleryText = getString(R.styleable.EditorSaveView_esv_galleryText) ?: "Gallery"
             settingText = getString(R.styleable.EditorSaveView_esv_settingText) ?: "Settings"
             settingIcon = getResourceId(R.styleable.EditorSaveView_esv_settingIcon, R.drawable.ic_settings)
-            arrowIcon = getResourceId(R.styleable.EditorSaveView_esv_arrowIcon, R.drawable.ic_right_arrow)
+            arrowIcon = getResourceId(R.styleable.EditorSaveView_esv_arrowIcon, R.drawable.ic_right_arrow1)
             iconTint = getColor(R.styleable.EditorSaveView_esv_iconTint, getThemeColorWithAlpha(context, com.google.android.material.R.attr.colorOnSurface, 255))
             hPadding = getDimension(R.styleable.EditorSaveView_esv_hPadding, dp2Px(12))
             vPadding = getDimension(R.styleable.EditorSaveView_esv_vPadding, dp2Px(8))
@@ -144,8 +145,8 @@ class EditorSaveView @JvmOverloads constructor(
             setImageResource(saveIcon)
             setColorFilter(iconTint)
             layoutParams = LayoutParams(iconSize.toInt(), iconSize.toInt()).apply {
-                topMargin = dp2Px(4)
-                bottomMargin = dp2Px(4)
+                topMargin = dp2Px(2)
+                bottomMargin = dp2Px(2)
             }
         }
         addView(saveIcon)
@@ -166,8 +167,8 @@ class EditorSaveView @JvmOverloads constructor(
             setImageResource(settingIcon)
             setColorFilter(iconTint)
             layoutParams = LayoutParams(iconSize.toInt(), iconSize.toInt()).apply {
-                topMargin = dp2Px(4)
-                bottomMargin = dp2Px(4)
+                topMargin = dp2Px(2)
+                bottomMargin = dp2Px(2)
             }
         }
         addView(settingIcon)
@@ -222,6 +223,7 @@ class EditorSaveView @JvmOverloads constructor(
         } else {
             addSettingLayout()
             destWidth = calculateDestWidth()
+            Log.d("sqsong", "initLayout destWidth: $destWidth")
         }
         doOnLayout {
             initialWidth = width
@@ -232,6 +234,11 @@ class EditorSaveView @JvmOverloads constructor(
         removeAllViews()
         addSaveLayout(galleryText)
         addGapLine()
+        addSettingLayout()
+    }
+
+    private fun initSettingLayout() {
+        removeAllViews()
         addSettingLayout()
     }
 
@@ -313,7 +320,30 @@ class EditorSaveView @JvmOverloads constructor(
         doOnLayout {
             if (isAutoSaveMode) {
                 startAutoSaveAnimation()
+            } else {
+                startSettingAnimation()
             }
+        }
+    }
+
+    private fun startSettingAnimation() {
+        valueAnimator?.cancel()
+        saveState = EditorSaveState.SAVE_NONE
+        valueAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 800
+            interpolator = AccelerateInterpolator()
+            addUpdateListener {
+                val animatedValue = it.animatedValue as Float
+                val newWidth = destWidth + ((initialWidth - destWidth) * (1 - animatedValue)).toInt()
+                layoutParams.width = newWidth
+                requestLayout()
+            }
+            addListener(onStart = {
+                initSettingLayout()
+                destWidth = calculateDestWidth()
+                Log.d("sqsong", "startSettingAnimation destWidth: $destWidth")
+            })
+            start()
         }
     }
 
@@ -349,7 +379,7 @@ class EditorSaveView @JvmOverloads constructor(
             addListener(onEnd = {
                 initFullLayout()
                 destWidth = calculateDestWidth()
-                Log.d("songmao", "startDoneAnimation destWidth: $destWidth")
+                Log.d("sqsong", "startDoneAnimation destWidth: $destWidth")
                 startCollapseAnimation(destWidth)
             })
             start()
@@ -378,4 +408,16 @@ class EditorSaveView @JvmOverloads constructor(
         }
     }
 
+    fun resetViewSize() {
+        layoutParams = layoutParams.apply {
+            width = ViewGroup.LayoutParams.MATCH_PARENT
+        }
+        requestLayout()
+    }
+
+    fun toggleSaveMode() {
+        this.isAutoSaveMode = !this.isAutoSaveMode
+        resetViewSize()
+        startAnimation()
+    }
 }

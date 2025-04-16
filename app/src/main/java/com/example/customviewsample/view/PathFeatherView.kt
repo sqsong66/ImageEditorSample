@@ -447,7 +447,11 @@ class PathFeatherView @JvmOverloads constructor(
         // 设置Path绘制时的羽化效果
         clearPaint.style = Paint.Style.STROKE
         clearPaint.strokeWidth = touchStrokeWidth
-        clearPaint.maskFilter = BlurMaskFilter(featherRadius, BlurMaskFilter.Blur.NORMAL)
+        clearPaint.maskFilter = if (featherRadius > 0) {
+            BlurMaskFilter(featherRadius, BlurMaskFilter.Blur.NORMAL)
+        } else {
+            null // 设置为null以禁用羽化效果
+        }
         clearPaint.xfermode = clearXfermode
         
         // 在临时画布上绘制路径

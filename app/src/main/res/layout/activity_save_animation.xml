@@ -7,16 +7,36 @@
     android:layout_height="match_parent"
     tools:context=".ui.other.SaveAnimationActivity">
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/changeModeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="32dp"
+        android:text="Change Mode"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <com.example.customviewsample.view.EditorSaveView
         android:id="@+id/editorSaveView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="32dp"
-        app:esv_isAutoSaveMode="true"
+        android:layout_marginTop="16dp"
+        app:esv_isAutoSaveMode="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/changeModeButton" />
+
+    <com.example.customviewsample.view.SaveLoadingButton
+        android:id="@+id/saveLoadingButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/editorSaveView" />
 
     <!--<androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="0dp"

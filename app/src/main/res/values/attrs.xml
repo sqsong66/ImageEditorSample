@@ -44,4 +44,27 @@
         <attr name="esv_progressDoneColor" format="color" />
         <attr name="esv_progressDoneDuration" format="integer" />
     </declare-styleable>
+
+    <declare-styleable name="SaveLoadingButton">
+        <attr name="slb_borderWidth" format="dimension" />
+        <attr name="slb_borderColor" format="color" />
+        <attr name="slb_bgColor" format="color" />
+        <attr name="slb_cornerRadius" format="dimension" />
+        <attr name="slb_startIcon" format="reference" />
+        <attr name="slb_startIconTint" format="color" />
+        <attr name="slb_iconSize" format="dimension" />
+        <attr name="slb_iconMargin" format="dimension" />
+        <attr name="slb_saveText" format="string" />
+        <attr name="slb_textSize" format="dimension" />
+        <attr name="slb_textColor" format="color" />
+        <attr name="slb_shimmerColor" format="color" />
+        <attr name="slb_shimmerDuration" format="integer" />
+        <attr name="slb_shimmerWidth" format="dimension" />
+        <attr name="slb_saveState" format="enum">
+            <enum name="saving" value="0" />
+            <enum name="done" value="1" />
+        </attr>
+        <attr name="slb_hPadding" format="dimension" />
+        <attr name="slb_vPadding" format="dimension" />
+    </declare-styleable>
 </resources>
