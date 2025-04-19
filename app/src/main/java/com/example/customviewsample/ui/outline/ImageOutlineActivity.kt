@@ -1,18 +1,17 @@
 package com.example.customviewsample.ui.outline
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import com.example.customviewsample.base.BaseActivity
-import com.example.customviewsample.common.ext.letIfNotNull
 import com.example.customviewsample.databinding.ActivityImageOutlineBinding
 import com.example.customviewsample.utils.decodeBitmapByGlide
-import com.example.customviewsample.utils.dp2Px
 import com.sqsong.nativelib.NativeLib
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -30,13 +29,47 @@ class ImageOutlineActivity : BaseActivity<ActivityImageOutlineBinding>(ActivityI
         uri?.let(::loadImageBitmap)
     }
 
+
+    private val selectMediasLaunch = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        Log.d("sqsong", "result: $result")
+        if (result.resultCode == RESULT_OK) {
+            val data = result.data
+            val clipData = data?.clipData
+            if (clipData != null) {
+                val uris = mutableListOf<Uri>()
+                for (i in 0 until clipData.itemCount) {
+                    clipData.getItemAt(i).uri?.let { uris.add(it) }
+                }
+                Log.d("sqsong", "uris: ${uris.size}")
+                uris.getOrNull(0)?.let { uri ->
+                    loadImageBitmap(uri)
+                }
+            } else {
+                data?.data?.let(::loadImageBitmap)
+            }
+        }
+    }
+
+
+    private fun selectImages() {
+        val intent = Intent(Intent.ACTION_PICK)
+        intent.type = "image/*"
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        selectMediasLaunch.launch(intent)
+    }
+
+
     override fun initActivity(savedInstanceState: Bundle?) {
 
     }
 
     override fun initListeners() {
         binding.toolbar.setNavigationOnClickListener { finish() }
-        binding.chooseImageBtn.setOnClickListener { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+        binding.chooseImageBtn.setOnClickListener {
+            // pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            // getContent.launch("image/*")
+            selectImages()
+        }
         binding.strokeSlider.addOnChangeListener { _, value, _ ->
             binding.imageView.setOutlineStrokeWidth(value)
         }
